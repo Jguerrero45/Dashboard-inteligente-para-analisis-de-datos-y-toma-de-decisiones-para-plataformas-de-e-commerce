@@ -1,7 +1,7 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { BarChart3, ShoppingCart, Package, Users, FileText, Database, Sparkles, TrendingUp } from "lucide-react"
+import { BarChart3, ShoppingCart, Package, Users, FileText, Sparkles, TrendingUp } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const modules = [
@@ -44,14 +44,6 @@ const modules = [
     href: "/reportes",
     color: "text-cyan-500",
     bgColor: "bg-cyan-500/10",
-  },
-  {
-    title: "Base de Datos",
-    description: "Gestión y configuración de la base de datos PostgreSQL",
-    icon: Database,
-    href: "/base-datos",
-    color: "text-indigo-500",
-    bgColor: "bg-indigo-500/10",
   },
   {
     title: "Recomendaciones IA",

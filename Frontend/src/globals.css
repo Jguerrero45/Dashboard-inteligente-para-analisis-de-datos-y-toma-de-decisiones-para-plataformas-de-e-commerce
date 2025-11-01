@@ -120,7 +120,24 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Force Radix popper wrappers and other dropdowns to have a solid background and top z-index
+   so dropdowns and popovers always overlay the page content and don't show the page through. */
+[data-radix-popper-content-wrapper],
+[data-radix-popper-content-wrapper]>* {
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  opacity: 1 !important;
+  z-index: 9999 !important;
+}
+
+/* Ensure Radix portals used for selects/popovers are opaque and clipped */
+[data-radix-popper-content-wrapper] * {
+  background-color: transparent !important;
+  /* keep inner elements transparent so outer background shows */
 }

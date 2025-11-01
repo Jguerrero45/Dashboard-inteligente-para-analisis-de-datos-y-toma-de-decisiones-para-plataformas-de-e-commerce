@@ -1,7 +1,10 @@
 import React from "react"
 import { Tooltip } from "recharts"
 
-export function ChartContainer({ children, className }: { children: React.ReactNode; className?: string }) {
+export function ChartContainer({ children, className, config }: { children: React.ReactNode; className?: string; config?: any }) {
+    // `config` se acepta para compatibilidad con las llamadas existentes desde los charts.
+    // Actualmente no se utiliza directamente aquí, pero se deja disponible para futuras mejoras.
+    void config
     return <div className={className}>{children}</div>
 }
 

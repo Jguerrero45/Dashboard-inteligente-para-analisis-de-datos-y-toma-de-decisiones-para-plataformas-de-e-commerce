@@ -7,6 +7,7 @@ import Predicciones from "./pages/Predicciones"
 import Productos from "./pages/Productos"
 import Ventas from "./pages/Ventas"
 import Reportes from "./pages/Reportes"
+import Clientes from "./pages/Clientes"
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/predicciones" element={<Predicciones />} />
           <Route path="/productos" element={<Productos />} />
           <Route path="/ventas" element={<Ventas />} />
+          <Route path="/clientes" element={<Clientes />} />
           <Route path="/reportes" element={<Reportes />} />
         </Routes>
       </BrowserRouter>

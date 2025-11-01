@@ -64,7 +64,7 @@ const tiposReporte = [
 ]
 
 export default function ReportesPage() {
-  const { formatPrice, currency } = useCurrency()
+  const { currency } = useCurrency()
   const [tipoReporte, setTipoReporte] = useState("ventas")
   const [formato, setFormato] = useState("excel")
   const [dateFrom, setDateFrom] = useState<Date>()

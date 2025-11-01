@@ -244,7 +244,7 @@ export default function VentasPage() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-end">
                   <div className="flex-1">
                     <label className="text-sm font-medium mb-2 block">Fecha Desde</label>
-                    <Popover>
+                    <Popover usePortal={false}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -258,7 +258,7 @@ export default function VentasPage() {
                   </div>
                   <div className="flex-1">
                     <label className="text-sm font-medium mb-2 block">Fecha Hasta</label>
-                    <Popover>
+                    <Popover usePortal={false}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
                           <CalendarIcon className="mr-2 h-4 w-4" />
