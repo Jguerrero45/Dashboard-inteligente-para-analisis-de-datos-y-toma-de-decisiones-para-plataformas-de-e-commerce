@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import ChartInfo from "@/components/ui/chart-info"
 
 const trafficData = [
   { hora: "00:00", organico: 120, directo: 80, redes: 150, pago: 90 },
@@ -17,8 +18,15 @@ export function TrafficChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Fuentes de Tráfico</CardTitle>
-        <CardDescription>Análisis de visitas por canal durante el día</CardDescription>
+        <div className="flex items-start justify-between w-full">
+          <div>
+            <CardTitle>Fuentes de Tráfico</CardTitle>
+            <CardDescription>Análisis de visitas por canal durante el día</CardDescription>
+          </div>
+          <ChartInfo title="Fuentes de Tráfico">
+            <p className="text-sm">Muestra la distribución de visitas por canal a lo largo del día (orgánico, directo, redes y pago).</p>
+          </ChartInfo>
+        </div>
       </CardHeader>
       <CardContent>
         <ChartContainer
@@ -49,10 +57,10 @@ export function TrafficChart() {
               <YAxis />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Legend />
-              <Line type="monotone" dataKey="organico" stroke="var(--color-organico)" strokeWidth={2} name="Orgánico" />
-              <Line type="monotone" dataKey="directo" stroke="var(--color-directo)" strokeWidth={2} name="Directo" />
-              <Line type="monotone" dataKey="redes" stroke="var(--color-redes)" strokeWidth={2} name="Redes Sociales" />
-              <Line type="monotone" dataKey="pago" stroke="var(--color-pago)" strokeWidth={2} name="Publicidad" />
+              <Line type="monotone" dataKey="organico" stroke="hsl(var(--chart-1))" strokeWidth={2} name="Orgánico" />
+              <Line type="monotone" dataKey="directo" stroke="hsl(var(--chart-2))" strokeWidth={2} name="Directo" />
+              <Line type="monotone" dataKey="redes" stroke="hsl(var(--chart-3))" strokeWidth={2} name="Redes Sociales" />
+              <Line type="monotone" dataKey="pago" stroke="hsl(var(--chart-4))" strokeWidth={2} name="Publicidad" />
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>

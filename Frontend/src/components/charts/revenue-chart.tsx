@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import ChartInfo from "@/components/ui/chart-info"
 import { useCurrency } from "@/hooks/use-currency"
 
 export function RevenueChart() {
@@ -34,8 +35,15 @@ export function RevenueChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Ingresos por Categoría</CardTitle>
-        <CardDescription>Comparación de ingresos vs costos por categoría</CardDescription>
+        <div className="flex items-start justify-between w-full">
+          <div>
+            <CardTitle>Ingresos por Categoría</CardTitle>
+            <CardDescription>Comparación de ingresos vs costos por categoría</CardDescription>
+          </div>
+          <ChartInfo title="Ingresos por Categoría">
+            <p className="text-sm">Compara los ingresos y costos por categoría. Las barras muestran ingresos y costos asociados.</p>
+          </ChartInfo>
+        </div>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

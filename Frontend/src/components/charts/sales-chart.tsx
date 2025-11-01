@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import ChartInfo from "@/components/ui/chart-info"
 import { useCurrency } from "@/hooks/use-currency"
 
 export function SalesChart() {
@@ -31,8 +32,15 @@ export function SalesChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Ventas Mensuales</CardTitle>
-        <CardDescription>Evolución de ventas en los últimos 7 meses</CardDescription>
+        <div className="flex items-start justify-between w-full">
+          <div>
+            <CardTitle>Ventas Mensuales</CardTitle>
+            <CardDescription>Evolución de ventas en los últimos 7 meses</CardDescription>
+          </div>
+          <ChartInfo title="Ventas Mensuales">
+            <p className="text-sm">Muestra el total de ventas por mes. Cada punto/área representa las ventas agregadas del mes.</p>
+          </ChartInfo>
+        </div>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

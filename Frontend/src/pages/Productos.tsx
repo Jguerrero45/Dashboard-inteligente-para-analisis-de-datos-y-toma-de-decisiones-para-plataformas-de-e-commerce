@@ -157,7 +157,7 @@ export default function ProductosPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Productos Activos</CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-500" />
+                <TrendingUp className="h-4 w-4" style={{ color: 'hsl(var(--color-positive))' }} />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{productosActivos}</div>
@@ -167,7 +167,7 @@ export default function ProductosPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Bajo Stock</CardTitle>
-                <TrendingDown className="h-4 w-4 text-orange-500" />
+                <TrendingDown className="h-4 w-4" style={{ color: 'hsl(var(--brand-4))' }} />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{productosBajoStock}</div>
@@ -276,20 +276,18 @@ export default function ProductosPage() {
                           <TableCell>{producto.categoria}</TableCell>
                           <TableCell className="font-semibold">{formatPrice(producto.precio)}</TableCell>
                           <TableCell>
-                            <span
-                              className={
-                                producto.stock === 0 ? "text-red-500" : producto.stock < 30 ? "text-orange-500" : ""
-                              }
-                            >
+                            <span style={{
+                              color: producto.stock === 0 ? 'hsl(var(--color-negative))' : producto.stock < 30 ? 'hsl(var(--brand-4))' : undefined,
+                            }}>
                               {producto.stock}
                             </span>
                           </TableCell>
                           <TableCell>{producto.vendidos}</TableCell>
                           <TableCell>
                             {producto.tendencia === "up" ? (
-                              <TrendingUp className="h-4 w-4 text-green-500" />
+                              <TrendingUp className="h-4 w-4" style={{ color: 'hsl(var(--color-positive))' }} />
                             ) : (
-                              <TrendingDown className="h-4 w-4 text-red-500" />
+                              <TrendingDown className="h-4 w-4" style={{ color: 'hsl(var(--color-negative))' }} />
                             )}
                           </TableCell>
                           <TableCell>

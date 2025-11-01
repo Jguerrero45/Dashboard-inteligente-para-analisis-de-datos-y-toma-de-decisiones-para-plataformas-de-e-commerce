@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Cell, Pie, PieChart } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import ChartInfo from "@/components/ui/chart-info"
 
 export function ProductsChart() {
   const data = [
@@ -22,8 +23,15 @@ export function ProductsChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Distribución de Productos</CardTitle>
-        <CardDescription>Porcentaje de ventas por tipo de producto</CardDescription>
+        <div className="flex items-start justify-between w-full">
+          <div>
+            <CardTitle>Distribución de Productos</CardTitle>
+            <CardDescription>Porcentaje de ventas por tipo de producto</CardDescription>
+          </div>
+          <ChartInfo title="Distribución de Productos">
+            <p className="text-sm">Muestra la proporción de ventas por tipo de producto (porcentaje del total).</p>
+          </ChartInfo>
+        </div>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

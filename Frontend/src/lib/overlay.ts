@@ -44,6 +44,18 @@ export function getOverlayRoot() {
 
             const win = window as any
 
+            // Initialize lightweight runtime stats for debugging mutation storms
+            try {
+                win.__overlayMutationStats = win.__overlayMutationStats || {
+                    forceAllowScrollHeadObserver: 0,
+                    forceAllowScrollBodyObserver: 0,
+                    overlayOverflowObserver: 0,
+                    overlayPointerGuard: 0,
+                    notes: [],
+                    lastUpdated: Date.now(),
+                }
+            } catch (e) { }
+
             // Keep our style at the end of <head> so it has highest precedence
             // among styles with equal specificity. Also watch for new style nodes
             // that might attempt to override scrolling and re-append our style.
@@ -60,6 +72,8 @@ export function getOverlayRoot() {
                             // re-append style to ensure it's last
                             const s = document.getElementById('__force_allow_scroll')
                             if (s) document.head.appendChild(s)
+                            try { win.__overlayMutationStats.forceAllowScrollHeadObserver++ } catch (e) { }
+                            try { win.__overlayMutationStats.lastUpdated = Date.now() } catch (e) { }
                         } catch (e) {
                             // ignore
                         }
@@ -83,6 +97,8 @@ export function getOverlayRoot() {
                     for (const m of mutations) {
                         if (m.type === 'attributes' && m.attributeName === 'style') {
                             forceOverflow()
+                            try { win.__overlayMutationStats.forceAllowScrollBodyObserver++ } catch (e) { }
+                            try { win.__overlayMutationStats.lastUpdated = Date.now() } catch (e) { }
                         }
                     }
                 })
@@ -121,6 +137,9 @@ export function getOverlayRoot() {
                                     document.documentElement.style.overflow = ''
                                 }
                                 // debug note: prevented html/body overflow:hidden because no dialog found
+                                try { win.__overlayMutationStats.overlayOverflowObserver++ } catch (e) { }
+                                try { win.__overlayMutationStats.notes.push({ type: 'overflowRevert', when: Date.now() }) } catch (e) { }
+                                try { win.__overlayMutationStats.lastUpdated = Date.now() } catch (e) { }
                             }
                         }
                     }
@@ -143,7 +162,10 @@ export function getOverlayRoot() {
         // install in dev-like environments.
         try {
             const win = window as any
-            if (!win.__overlayDebugPatches && (import.meta && (import.meta.env && import.meta.env.MODE === 'development' || import.meta.env.DEV))) {
+            // Guarded runtime check for Vite import.meta.env in a type-safe way
+            const meta = (import.meta as any)
+            const isDevEnv = typeof import.meta !== 'undefined' && meta && meta.env && (meta.env.MODE === 'development' || meta.env.DEV)
+            if (!win.__overlayDebugPatches && isDevEnv) {
                 win.__overlayDebugPatches = true
                 // patch setAttribute
                 const origSetAttr = Element.prototype.setAttribute
@@ -153,6 +175,7 @@ export function getOverlayRoot() {
                             const stack = new Error('data-scroll-locked set').stack
                             // store for retrieval in console
                             try { (window as any).__lastDataScrollLockedStack = stack } catch (e) { }
+                            try { win.__overlayMutationStats.notes.push({ type: 'data-scroll-locked', when: Date.now(), el: (this as any).tagName }) } catch (e) { }
                             // also log visibly
                             // eslint-disable-next-line no-console
                             console.warn('[overlay-debug] data-scroll-locked set on', this, 'stack:', stack)
@@ -162,12 +185,13 @@ export function getOverlayRoot() {
                 }
 
                 // patch CSSStyleDeclaration.setProperty to catch pointer-events changes
-                const origSetProp = (CSSStyleDeclaration.prototype as any).setProperty
-                    (CSSStyleDeclaration.prototype as any).setProperty = function (prop: string, val: string, priority?: string) {
+                const origSetProp = (CSSStyleDeclaration.prototype as any).setProperty as (prop: string, val: string, priority?: string) => void
+                    ; (CSSStyleDeclaration.prototype as any).setProperty = function (prop: string, val: string, priority?: string): void {
                         try {
                             if (prop === 'pointer-events' && String(val) === 'none') {
                                 const stack = new Error('pointer-events:none set').stack
                                 try { (window as any).__lastPointerEventsNoneStack = stack } catch (e) { }
+                                try { win.__overlayMutationStats.notes.push({ type: 'pointer-events-none', when: Date.now(), owner: (this as any).cssText?.slice?.(0, 80) }) } catch (e) { }
                                 // eslint-disable-next-line no-console
                                 console.warn('[overlay-debug] pointer-events:none set via setProperty on', this, 'stack:', stack)
                             }

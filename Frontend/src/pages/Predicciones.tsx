@@ -33,6 +33,7 @@ import {
   PolarRadiusAxis,
 } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import ChartInfo from "@/components/ui/chart-info"
 import { useCurrency } from "@/hooks/use-currency"
 
 // Datos de predicción de ventas
@@ -187,8 +188,15 @@ export default function PrediccionesPage() {
           {/* Predicción de Ventas */}
           <Card>
             <CardHeader>
-              <CardTitle>Predicción de Ventas Mensuales</CardTitle>
-              <CardDescription>Comparación entre ventas reales y predicciones del modelo de IA</CardDescription>
+              <div className="flex items-start justify-between w-full">
+                <div>
+                  <CardTitle>Predicción de Ventas Mensuales</CardTitle>
+                  <CardDescription>Comparación entre ventas reales y predicciones del modelo de IA</CardDescription>
+                </div>
+                <ChartInfo title="Predicción de Ventas">
+                  <p className="text-sm">Compara ventas reales con lo que predice el modelo; la confianza indica la certeza de la predicción.</p>
+                </ChartInfo>
+              </div>
             </CardHeader>
             <CardContent>
               <ChartContainer
@@ -214,7 +222,7 @@ export default function PrediccionesPage() {
                     <Line
                       type="monotone"
                       dataKey="real"
-                      stroke="var(--color-real)"
+                      stroke="hsl(var(--chart-1))"
                       strokeWidth={2}
                       dot={{ r: 4 }}
                       name="Ventas Reales"
@@ -222,7 +230,7 @@ export default function PrediccionesPage() {
                     <Line
                       type="monotone"
                       dataKey="prediccion"
-                      stroke="var(--color-prediccion)"
+                      stroke="hsl(var(--chart-2))"
                       strokeWidth={2}
                       strokeDasharray="5 5"
                       dot={{ r: 4 }}
@@ -241,8 +249,15 @@ export default function PrediccionesPage() {
           {/* Predicción de Demanda por Producto */}
           <Card>
             <CardHeader>
-              <CardTitle>Predicción de Demanda por Producto</CardTitle>
-              <CardDescription>Proyección de demanda para los próximos 30 días</CardDescription>
+              <div className="flex items-start justify-between w-full">
+                <div>
+                  <CardTitle>Predicción de Demanda por Producto</CardTitle>
+                  <CardDescription>Proyección de demanda para los próximos 30 días</CardDescription>
+                </div>
+                <ChartInfo title="Predicción de Demanda">
+                  <p className="text-sm">Compara la demanda actual con la demanda predicha por producto.</p>
+                </ChartInfo>
+              </div>
             </CardHeader>
             <CardContent>
               <ChartContainer
@@ -265,8 +280,8 @@ export default function PrediccionesPage() {
                     <YAxis />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Legend />
-                    <Bar dataKey="demandaActual" fill="var(--color-demandaActual)" name="Demanda Actual" />
-                    <Bar dataKey="demandaPredicha" fill="var(--color-demandaPredicha)" name="Demanda Predicha" />
+                    <Bar dataKey="demandaActual" fill="hsl(var(--chart-3))" name="Demanda Actual" />
+                    <Bar dataKey="demandaPredicha" fill="hsl(var(--chart-4))" name="Demanda Predicha" />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -283,12 +298,12 @@ export default function PrediccionesPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-lg ${prediction.impact === "high"
-                            ? "bg-orange-500/10 text-orange-500"
-                            : "bg-blue-500/10 text-blue-500"
-                            }`}
+                          className={`flex h-10 w-10 items-center justify-center rounded-lg`}
+                          style={{
+                            background: prediction.impact === "high" ? `hsl(var(--brand-4) / 0.12)` : `hsl(var(--brand-1) / 0.12)`,
+                          }}
                         >
-                          <Icon className="h-5 w-5" />
+                          <Icon className="h-5 w-5" style={{ color: prediction.impact === "high" ? `hsl(var(--brand-4))` : `hsl(var(--brand-1))` }} />
                         </div>
                         <div>
                           <CardTitle className="text-lg">{prediction.title}</CardTitle>
@@ -309,8 +324,15 @@ export default function PrediccionesPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Análisis de Estacionalidad</CardTitle>
-              <CardDescription>Patrones de ventas anuales y proyecciones</CardDescription>
+              <div className="flex items-start justify-between w-full">
+                <div>
+                  <CardTitle>Análisis de Estacionalidad</CardTitle>
+                  <CardDescription>Patrones de ventas anuales y proyecciones</CardDescription>
+                </div>
+                <ChartInfo title="Análisis de Estacionalidad">
+                  <p className="text-sm">Visualiza patrones estacionales y cómo la predicción se alinea con las series históricas.</p>
+                </ChartInfo>
+              </div>
             </CardHeader>
             <CardContent>
               <ChartContainer
@@ -336,16 +358,16 @@ export default function PrediccionesPage() {
                     <Area
                       type="monotone"
                       dataKey="ventas"
-                      stroke="var(--color-ventas)"
-                      fill="var(--color-ventas)"
+                      stroke="hsl(var(--chart-1))"
+                      fill="hsl(var(--chart-1))"
                       fillOpacity={0.6}
                       name="Ventas Históricas"
                     />
                     <Area
                       type="monotone"
                       dataKey="prediccion"
-                      stroke="var(--color-prediccion)"
-                      fill="var(--color-prediccion)"
+                      stroke="hsl(var(--chart-2))"
+                      fill="hsl(var(--chart-2))"
                       fillOpacity={0.3}
                       strokeDasharray="5 5"
                       name="Predicción"
@@ -383,15 +405,15 @@ export default function PrediccionesPage() {
                     <Radar
                       name="Rendimiento Actual"
                       dataKey="actual"
-                      stroke="var(--color-actual)"
-                      fill="var(--color-actual)"
+                      stroke="hsl(var(--chart-3))"
+                      fill="hsl(var(--chart-3))"
                       fillOpacity={0.6}
                     />
                     <Radar
                       name="Rendimiento Predicho"
                       dataKey="predicho"
-                      stroke="var(--color-predicho)"
-                      fill="var(--color-predicho)"
+                      stroke="hsl(var(--chart-4))"
+                      fill="hsl(var(--chart-4))"
                       fillOpacity={0.3}
                     />
                     <Legend />
@@ -423,7 +445,7 @@ export default function PrediccionesPage() {
                       <XAxis dataKey="segmento" />
                       <YAxis />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="riesgo" fill="var(--color-riesgo)" radius={[8, 8, 0, 0]} name="Riesgo %" />
+                      <Bar dataKey="riesgo" fill="hsl(var(--chart-5))" radius={[8, 8, 0, 0]} name="Riesgo %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </ChartContainer>

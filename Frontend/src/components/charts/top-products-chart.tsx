@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import ChartInfo from "@/components/ui/chart-info"
 import { useCurrency } from "@/hooks/use-currency"
 
 const topProductsData = [
@@ -19,8 +20,15 @@ export function TopProductsChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Productos Más Vendidos</CardTitle>
-        <CardDescription>Top 5 productos por ingresos generados</CardDescription>
+        <div className="flex items-start justify-between w-full">
+          <div>
+            <CardTitle>Productos Más Vendidos</CardTitle>
+            <CardDescription>Top 5 productos por ingresos generados</CardDescription>
+          </div>
+          <ChartInfo title="Productos Más Vendidos">
+            <p className="text-sm">Lista de los productos que generaron más ingresos en el periodo seleccionado.</p>
+          </ChartInfo>
+        </div>
       </CardHeader>
       <CardContent>
         <ChartContainer
@@ -38,7 +46,7 @@ export function TopProductsChart() {
               <XAxis type="number" />
               <YAxis dataKey="producto" type="category" width={100} />
               <ChartTooltip content={<ChartTooltipContent />} formatter={(value: number) => formatPrice(value)} />
-              <Bar dataKey="ventas" fill="var(--color-ventas)" radius={[0, 4, 4, 0]} name="Ventas" />
+              <Bar dataKey="ventas" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} name="Ventas" />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>

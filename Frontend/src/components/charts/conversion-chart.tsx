@@ -1,6 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import ChartInfo from "@/components/ui/chart-info"
 import { Area, AreaChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
@@ -17,8 +18,15 @@ export function ConversionChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Embudo de Conversión</CardTitle>
-        <CardDescription>Análisis del proceso de compra de los usuarios</CardDescription>
+        <div className="flex items-start justify-between w-full">
+          <div>
+            <CardTitle>Embudo de Conversión</CardTitle>
+            <CardDescription>Análisis del proceso de compra de los usuarios</CardDescription>
+          </div>
+          <ChartInfo title="Embudo de Conversión">
+            <p className="text-sm">Muestra cuántas visitas avanzan a carritos y finalmente a compras (embudo de conversión).</p>
+          </ChartInfo>
+        </div>
       </CardHeader>
       <CardContent>
         <ChartContainer
@@ -49,8 +57,8 @@ export function ConversionChart() {
                 type="monotone"
                 dataKey="visitas"
                 stackId="1"
-                stroke="var(--color-visitas)"
-                fill="var(--color-visitas)"
+                stroke="hsl(var(--chart-1))"
+                fill="hsl(var(--chart-1))"
                 fillOpacity={0.6}
                 name="Visitas"
               />
@@ -58,8 +66,8 @@ export function ConversionChart() {
                 type="monotone"
                 dataKey="carritos"
                 stackId="2"
-                stroke="var(--color-carritos)"
-                fill="var(--color-carritos)"
+                stroke="hsl(var(--chart-2))"
+                fill="hsl(var(--chart-2))"
                 fillOpacity={0.6}
                 name="Carritos"
               />
@@ -67,8 +75,8 @@ export function ConversionChart() {
                 type="monotone"
                 dataKey="compras"
                 stackId="3"
-                stroke="var(--color-compras)"
-                fill="var(--color-compras)"
+                stroke="hsl(var(--chart-3))"
+                fill="hsl(var(--chart-3))"
                 fillOpacity={0.6}
                 name="Compras"
               />

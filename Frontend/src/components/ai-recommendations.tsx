@@ -35,10 +35,23 @@ export function AIRecommendations() {
     },
   ]
 
-  const priorityColors = {
-    high: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20",
-    medium: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20",
-    low: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
+  // Use semantic palette variables so badges adapt to light/dark palettes
+  const priorityStyles: Record<string, React.CSSProperties> = {
+    high: {
+      background: "hsl(var(--color-negative) / 0.12)",
+      color: "hsl(var(--color-negative))",
+      borderColor: "hsl(var(--color-negative) / 0.18)",
+    },
+    medium: {
+      background: "hsl(var(--color-neutral) / 0.12)",
+      color: "hsl(var(--color-neutral))",
+      borderColor: "hsl(var(--color-neutral) / 0.18)",
+    },
+    low: {
+      background: "hsl(var(--color-primary) / 0.08)",
+      color: "hsl(var(--color-primary))",
+      borderColor: "hsl(var(--color-primary) / 0.12)",
+    },
   }
 
   return (
@@ -65,7 +78,7 @@ export function AIRecommendations() {
               <div className="flex-1 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <h4 className="font-semibold leading-tight">{rec.title}</h4>
-                  <Badge variant="outline" className={priorityColors[rec.priority as keyof typeof priorityColors]}>
+                  <Badge variant="outline" style={priorityStyles[rec.priority]}>
                     {rec.priority === "high" ? "Alta" : rec.priority === "medium" ? "Media" : "Baja"}
                   </Badge>
                 </div>

@@ -31,35 +31,35 @@ const tiposReporte = [
     nombre: "Reporte de Ventas",
     descripcion: "Análisis detallado de todas las transacciones",
     icon: TrendingUp,
-    color: "text-green-500",
+    brand: 2,
   },
   {
     id: "productos",
     nombre: "Reporte de Productos",
     descripcion: "Inventario, stock y movimientos de productos",
     icon: Package,
-    color: "text-blue-500",
+    brand: 1,
   },
   {
     id: "clientes",
     nombre: "Reporte de Clientes",
     descripcion: "Análisis de comportamiento y segmentación",
     icon: Users,
-    color: "text-purple-500",
+    brand: 3,
   },
   {
     id: "financiero",
     nombre: "Reporte Financiero",
     descripcion: "Ingresos, gastos y análisis de rentabilidad",
     icon: DollarSign,
-    color: "text-yellow-500",
+    brand: 7,
   },
   {
     id: "general",
     nombre: "Reporte General",
     descripcion: "Resumen ejecutivo de todas las métricas",
     icon: BarChart3,
-    color: "text-orange-500",
+    brand: 5,
   },
 ]
 
@@ -154,9 +154,10 @@ export default function ReportesPage() {
                       <CardHeader>
                         <div className="flex items-center gap-3">
                           <div
-                            className={`flex h-10 w-10 items-center justify-center rounded-lg bg-muted ${tipo.color}`}
+                            className={`flex h-10 w-10 items-center justify-center rounded-lg`}
+                            style={{ background: `hsl(var(--brand-${tipo.brand}) / 0.12)` }}
                           >
-                            <Icon className="h-5 w-5" />
+                            <Icon className="h-5 w-5" style={{ color: `hsl(var(--brand-${tipo.brand}))` }} />
                           </div>
                           <div className="flex-1">
                             <CardTitle className="text-base">{tipo.nombre}</CardTitle>

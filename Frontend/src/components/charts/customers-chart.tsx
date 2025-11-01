@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import ChartInfo from "@/components/ui/chart-info"
 
 export function CustomersChart() {
   const data = [
@@ -29,8 +30,15 @@ export function CustomersChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Clientes Nuevos vs Recurrentes</CardTitle>
-        <CardDescription>Evolución de la base de clientes</CardDescription>
+        <div className="flex items-start justify-between w-full">
+          <div>
+            <CardTitle>Clientes Nuevos vs Recurrentes</CardTitle>
+            <CardDescription>Evolución de la base de clientes</CardDescription>
+          </div>
+          <ChartInfo title="Clientes">
+            <p className="text-sm">Compara nuevos clientes frente a clientes recurrentes por mes.</p>
+          </ChartInfo>
+        </div>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

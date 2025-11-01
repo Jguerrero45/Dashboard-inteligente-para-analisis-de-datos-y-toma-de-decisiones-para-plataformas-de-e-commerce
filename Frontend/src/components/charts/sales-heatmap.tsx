@@ -1,6 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import ChartInfo from "@/components/ui/chart-info"
 
 const daysOfWeek = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 const hoursOfDay = ["00", "04", "08", "12", "16", "20"]
@@ -28,8 +29,15 @@ export function SalesHeatmap() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Mapa de Calor de Ventas</CardTitle>
-        <CardDescription>Intensidad de ventas por día y hora</CardDescription>
+        <div className="flex items-start justify-between w-full">
+          <div>
+            <CardTitle>Mapa de Calor de Ventas</CardTitle>
+            <CardDescription>Intensidad de ventas por día y hora</CardDescription>
+          </div>
+          <ChartInfo title="Mapa de Calor de Ventas">
+            <p className="text-sm">Mapa que muestra la intensidad relativa de ventas por día y franja horaria (mayor intensidad = más ventas).</p>
+          </ChartInfo>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">

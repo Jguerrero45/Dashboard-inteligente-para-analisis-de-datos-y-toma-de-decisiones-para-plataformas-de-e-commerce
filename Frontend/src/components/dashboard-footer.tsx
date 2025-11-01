@@ -68,26 +68,26 @@ export function DashboardFooter() {
                 href="https://github.com"
                 target="_blank"
                 rel="noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="hover:opacity-90 transition-opacity"
                 aria-label="GitHub"
               >
-                <Github className="h-5 w-5" />
+                <Github className="h-5 w-5" style={{ color: 'hsl(var(--brand-3))' }} />
               </a>
               <a
                 href="https://linkedin.com"
                 target="_blank"
                 rel="noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="hover:opacity-90 transition-opacity"
                 aria-label="LinkedIn"
               >
-                <Linkedin className="h-5 w-5" />
+                <Linkedin className="h-5 w-5" style={{ color: 'hsl(var(--brand-5))' }} />
               </a>
               <a
                 href="mailto:contacto@dashboard.com"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="hover:opacity-90 transition-opacity"
                 aria-label="Email"
               >
-                <Mail className="h-5 w-5" />
+                <Mail className="h-5 w-5" style={{ color: 'hsl(var(--brand-6))' }} />
               </a>
             </div>
           </div>

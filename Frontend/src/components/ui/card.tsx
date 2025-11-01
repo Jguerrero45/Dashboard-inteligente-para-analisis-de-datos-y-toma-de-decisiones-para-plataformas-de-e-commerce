@@ -1,9 +1,25 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("rounded-xl border bg-card text-card-foreground shadow", className)} {...props} />
-))
+const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, style, ...props }, ref) => {
+  // Use the current primary color for card borders so the UI palette is more visible.
+  // We merge any incoming style prop so callers can still override styles.
+  // Use a stronger border opacity so the card border is clearly visible and colored.
+  const mergedStyle = {
+    borderColor: 'hsl(var(--color-primary) / 0.8)',
+    borderWidth: '1.5px',
+    borderStyle: 'solid',
+    ...style,
+  } as React.CSSProperties
+  return (
+    <div
+      ref={ref}
+      className={cn("rounded-xl border bg-card text-card-foreground shadow", className)}
+      style={mergedStyle}
+      {...props}
+    />
+  )
+})
 Card.displayName = "Card"
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(

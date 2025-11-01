@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { Menu, Moon, Sun, DollarSign, User, Settings, LogOut, Bell } from "lucide-react"
+import { Menu, Moon, Sun, DollarSign, User, LogOut, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -36,7 +36,10 @@ export function DashboardHeader() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6 lg:px-8">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-lg"
+            style={{ background: "hsl(var(--brand-1))", color: "hsl(var(--brand-1) / 0.98)" }}
+          >
             <span className="text-xl font-bold">DI</span>
           </div>
           <span className="hidden font-semibold md:inline-block">Dashboard Inteligente</span>
@@ -69,7 +72,7 @@ export function DashboardHeader() {
 
           <Button variant="ghost" size="icon" className="hidden sm:flex relative">
             <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
+            <span className="absolute top-1 right-1 h-2 w-2 rounded-full" style={{ background: 'hsl(var(--color-negative))' }} />
           </Button>
 
           {/* Theme Toggle */}
@@ -106,16 +109,12 @@ export function DashboardHeader() {
                   <span>Mi Perfil</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/ajustes" className="cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Ajustes</span>
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer text-red-600">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Cerrar Sesión</span>
+              <DropdownMenuItem className="cursor-pointer">
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <LogOut className="mr-2 h-4 w-4" style={{ color: 'hsl(var(--color-negative))' }} />
+                  <span style={{ color: 'hsl(var(--color-negative))' }}>Cerrar Sesión</span>
+                </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

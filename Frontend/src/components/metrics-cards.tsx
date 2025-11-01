@@ -53,13 +53,10 @@ export function MetricsCards() {
               <div className="text-2xl font-bold">{metric.value}</div>
               <div className="flex items-center gap-1 text-xs mt-1">
                 <TrendIcon
-                  className={`h-3 w-3 ${metric.trend === "up" ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}
+                  className="h-3 w-3"
+                  style={{ color: metric.trend === "up" ? "hsl(var(--color-positive))" : "hsl(var(--color-negative))" }}
                 />
-                <span
-                  className={
-                    metric.trend === "up" ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"
-                  }
-                >
+                <span style={{ color: metric.trend === "up" ? "hsl(var(--color-positive))" : "hsl(var(--color-negative))" }}>
                   {metric.change}
                 </span>
                 <span className="text-muted-foreground">vs mes anterior</span>
