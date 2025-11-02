@@ -8,6 +8,9 @@ import Productos from "./pages/Productos"
 import Ventas from "./pages/Ventas"
 import Reportes from "./pages/Reportes"
 import Clientes from "./pages/Clientes"
+import IaRecomendaciones from "./pages/IaRecomendaciones"
+import Finanzas from "./pages/Finanzas"
+import Perfil from "./pages/Perfil"
 
 function App() {
   return (
@@ -21,7 +24,10 @@ function App() {
           <Route path="/productos" element={<Productos />} />
           <Route path="/ventas" element={<Ventas />} />
           <Route path="/clientes" element={<Clientes />} />
+          <Route path="/ia-recomendaciones" element={<IaRecomendaciones />} />
+          <Route path="/perfil" element={<Perfil />} />
           <Route path="/reportes" element={<Reportes />} />
+          <Route path="/finanzas" element={<Finanzas />} />
         </Routes>
       </BrowserRouter>
       <Toaster />

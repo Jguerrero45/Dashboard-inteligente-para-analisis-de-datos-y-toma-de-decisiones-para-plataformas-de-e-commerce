@@ -19,6 +19,7 @@ const productosData = [
     nombre: "Laptop Pro 15",
     categoria: "Electrónica",
     precio: 1299.99,
+    costo: 800.0,
     stock: 45,
     vendidos: 234,
     tendencia: "up",
@@ -29,6 +30,7 @@ const productosData = [
     nombre: "Mouse Gamer RGB",
     categoria: "Accesorios",
     precio: 49.99,
+    costo: 20.0,
     stock: 156,
     vendidos: 892,
     tendencia: "up",
@@ -39,6 +41,7 @@ const productosData = [
     nombre: "Teclado Mecánico",
     categoria: "Accesorios",
     precio: 89.99,
+    costo: 40.0,
     stock: 23,
     vendidos: 445,
     tendencia: "down",
@@ -49,6 +52,7 @@ const productosData = [
     nombre: "Monitor 4K 27",
     categoria: "Electrónica",
     precio: 449.99,
+    costo: 250.0,
     stock: 67,
     vendidos: 178,
     tendencia: "up",
@@ -59,6 +63,7 @@ const productosData = [
     nombre: "Webcam HD Pro",
     categoria: "Accesorios",
     precio: 79.99,
+    costo: 30.0,
     stock: 89,
     vendidos: 567,
     tendencia: "up",
@@ -69,6 +74,7 @@ const productosData = [
     nombre: "Auriculares Bluetooth",
     categoria: "Audio",
     precio: 129.99,
+    costo: 60.0,
     stock: 12,
     vendidos: 723,
     tendencia: "down",
@@ -79,6 +85,7 @@ const productosData = [
     nombre: "SSD 1TB NVMe",
     categoria: "Almacenamiento",
     precio: 159.99,
+    costo: 90.0,
     stock: 134,
     vendidos: 456,
     tendencia: "up",
@@ -89,6 +96,7 @@ const productosData = [
     nombre: "Router WiFi 6",
     categoria: "Redes",
     precio: 199.99,
+    costo: 120.0,
     stock: 0,
     vendidos: 289,
     tendencia: "down",
@@ -255,6 +263,8 @@ export default function ProductosPage() {
                       <TableHead>Producto</TableHead>
                       <TableHead>Categoría</TableHead>
                       <TableHead>Precio</TableHead>
+                      <TableHead>Costo</TableHead>
+                      <TableHead>Utilidad</TableHead>
                       <TableHead>Stock</TableHead>
                       <TableHead>Vendidos</TableHead>
                       <TableHead>Tendencia</TableHead>
@@ -264,51 +274,58 @@ export default function ProductosPage() {
                   <TableBody>
                     {productosFiltrados.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center text-muted-foreground">
+                        <TableCell colSpan={10} className="text-center text-muted-foreground">
                           No se encontraron productos con los filtros aplicados
                         </TableCell>
                       </TableRow>
                     ) : (
-                      productosFiltrados.map((producto) => (
-                        <TableRow key={producto.id}>
-                          <TableCell className="font-medium">{producto.id}</TableCell>
-                          <TableCell>{producto.nombre}</TableCell>
-                          <TableCell>{producto.categoria}</TableCell>
-                          <TableCell className="font-semibold">{formatPrice(producto.precio)}</TableCell>
-                          <TableCell>
-                            <span style={{
-                              color: producto.stock === 0 ? 'hsl(var(--color-negative))' : producto.stock < 30 ? 'hsl(var(--brand-4))' : undefined,
-                            }}>
-                              {producto.stock}
-                            </span>
-                          </TableCell>
-                          <TableCell>{producto.vendidos}</TableCell>
-                          <TableCell>
-                            {producto.tendencia === "up" ? (
-                              <TrendingUp className="h-4 w-4" style={{ color: 'hsl(var(--color-positive))' }} />
-                            ) : (
-                              <TrendingDown className="h-4 w-4" style={{ color: 'hsl(var(--color-negative))' }} />
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                producto.estado === "activo"
-                                  ? "default"
+                      productosFiltrados.map((producto) => {
+                        const utilidad = (producto.precio ?? 0) - (producto.costo ?? 0)
+                        return (
+                          <TableRow key={producto.id}>
+                            <TableCell className="font-medium">{producto.id}</TableCell>
+                            <TableCell>{producto.nombre}</TableCell>
+                            <TableCell>{producto.categoria}</TableCell>
+                            <TableCell className="font-semibold">{formatPrice(producto.precio)}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatPrice(producto.costo)}</TableCell>
+                            <TableCell className="font-semibold" style={{ color: utilidad < 0 ? 'hsl(var(--color-negative))' : 'inherit' }}>
+                              {formatPrice(utilidad)}
+                            </TableCell>
+                            <TableCell>
+                              <span style={{
+                                color: producto.stock === 0 ? 'hsl(var(--color-negative))' : producto.stock < 30 ? 'hsl(var(--brand-4))' : undefined,
+                              }}>
+                                {producto.stock}
+                              </span>
+                            </TableCell>
+                            <TableCell>{producto.vendidos}</TableCell>
+                            <TableCell>
+                              {producto.tendencia === "up" ? (
+                                <TrendingUp className="h-4 w-4" style={{ color: 'hsl(var(--color-positive))' }} />
+                              ) : (
+                                <TrendingDown className="h-4 w-4" style={{ color: 'hsl(var(--color-negative))' }} />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  producto.estado === "activo"
+                                    ? "default"
+                                    : producto.estado === "bajo-stock"
+                                      ? "secondary"
+                                      : "destructive"
+                                }
+                              >
+                                {producto.estado === "activo"
+                                  ? "Activo"
                                   : producto.estado === "bajo-stock"
-                                    ? "secondary"
-                                    : "destructive"
-                              }
-                            >
-                              {producto.estado === "activo"
-                                ? "Activo"
-                                : producto.estado === "bajo-stock"
-                                  ? "Bajo Stock"
-                                  : "Agotado"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                                    ? "Bajo Stock"
+                                    : "Agotado"}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
                     )}
                   </TableBody>
                 </Table>

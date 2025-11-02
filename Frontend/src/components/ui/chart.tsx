@@ -1,11 +1,27 @@
+"use client"
+
 import React from "react"
-import { Tooltip } from "recharts"
+import { Tooltip, ResponsiveContainer } from "recharts"
 
 export function ChartContainer({ children, className, config }: { children: React.ReactNode; className?: string; config?: any }) {
     // `config` se acepta para compatibilidad con las llamadas existentes desde los charts.
-    // Actualmente no se utiliza directamente aquí, pero se deja disponible para futuras mejoras.
+    // Si el hijo ya es un <ResponsiveContainer> lo dejamos pasar, si no lo envolvemos
+    // para asegurar que Recharts tenga un tamaño definido y las gráficas se rendericen.
     void config
-    return <div className={className}>{children}</div>
+
+    // Si hay un único elemento React y su tipo es ResponsiveContainer, lo devolvemos tal cual.
+    if (React.isValidElement(children) && (children as any).type === ResponsiveContainer) {
+        return <div className={className}>{children}</div>
+    }
+
+    // Envolvemos el contenido en ResponsiveContainer para que ocupe el 100% del contenedor.
+    return (
+        <div className={className}>
+            <ResponsiveContainer width="100%" height="100%">
+                {children as any}
+            </ResponsiveContainer>
+        </div>
+    )
 }
 
 export function ChartTooltip(props: any) {

@@ -18,11 +18,12 @@ const heatmapData = [
 ]
 
 function getColorIntensity(value: number) {
-  if (value >= 80) return "bg-chart-1"
-  if (value >= 60) return "bg-chart-2"
-  if (value >= 40) return "bg-chart-3"
-  if (value >= 20) return "bg-chart-4"
-  return "bg-muted"
+  // Retornamos cadenas CSS para usar en style={{ backgroundColor }}
+  if (value >= 80) return "hsl(var(--chart-1))"
+  if (value >= 60) return "hsl(var(--chart-2))"
+  if (value >= 40) return "hsl(var(--chart-3))"
+  if (value >= 20) return "hsl(var(--chart-4))"
+  return "hsl(var(--color-muted))"
 }
 
 export function SalesHeatmap() {
@@ -55,8 +56,9 @@ export function SalesHeatmap() {
               {heatmapData[dayIndex].map((value, hourIndex) => (
                 <div
                   key={hourIndex}
-                  className={`flex-1 h-10 rounded ${getColorIntensity(value)} transition-all hover:scale-105 cursor-pointer`}
+                  className={`flex-1 h-10 rounded transition-all hover:scale-105 cursor-pointer`}
                   title={`${day} ${hoursOfDay[hourIndex]}:00 - ${value}% actividad`}
+                  style={{ backgroundColor: getColorIntensity(value) }}
                 />
               ))}
             </div>
@@ -65,11 +67,11 @@ export function SalesHeatmap() {
         <div className="mt-4 flex items-center justify-center gap-4 text-xs text-muted-foreground">
           <span>Menos actividad</span>
           <div className="flex gap-1">
-            <div className="w-4 h-4 rounded bg-muted" />
-            <div className="w-4 h-4 rounded bg-chart-4" />
-            <div className="w-4 h-4 rounded bg-chart-3" />
-            <div className="w-4 h-4 rounded bg-chart-2" />
-            <div className="w-4 h-4 rounded bg-chart-1" />
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: "hsl(var(--color-muted))" }} />
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: "hsl(var(--chart-4))" }} />
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: "hsl(var(--chart-3))" }} />
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: "hsl(var(--chart-2))" }} />
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: "hsl(var(--chart-1))" }} />
           </div>
           <span>Más actividad</span>
         </div>

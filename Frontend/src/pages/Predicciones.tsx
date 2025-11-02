@@ -380,8 +380,15 @@ export default function PrediccionesPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Rendimiento por Categoría</CardTitle>
-              <CardDescription>Análisis comparativo de desempeño actual vs predicho</CardDescription>
+              <div className="flex items-start justify-between w-full">
+                <div>
+                  <CardTitle>Rendimiento por Categoría</CardTitle>
+                  <CardDescription>Análisis comparativo de desempeño actual vs predicho</CardDescription>
+                </div>
+                <ChartInfo title="Rendimiento por Categoría">
+                  <p className="text-sm">Radar que compara el desempeño actual y la predicción por categoría.</p>
+                </ChartInfo>
+              </div>
             </CardHeader>
             <CardContent>
               <ChartContainer
@@ -426,8 +433,15 @@ export default function PrediccionesPage() {
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Predicción de Abandono de Clientes</CardTitle>
-                <CardDescription>Riesgo de pérdida por segmento de cliente</CardDescription>
+                <div className="flex items-start justify-between w-full">
+                  <div>
+                    <CardTitle>Predicción de Abandono de Clientes</CardTitle>
+                    <CardDescription>Riesgo de pérdida por segmento de cliente</CardDescription>
+                  </div>
+                  <ChartInfo title="Predicción de Abandono">
+                    <p className="text-sm">Muestra el riesgo de churn por segmento para priorizar acciones de retención.</p>
+                  </ChartInfo>
+                </div>
               </CardHeader>
               <CardContent>
                 <ChartContainer
@@ -462,8 +476,15 @@ export default function PrediccionesPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Optimización de Precios</CardTitle>
-                <CardDescription>Recomendaciones de ajuste de precios basadas en IA</CardDescription>
+                <div className="flex items-start justify-between w-full">
+                  <div>
+                    <CardTitle>Optimización de Precios</CardTitle>
+                    <CardDescription>Recomendaciones de ajuste de precios basadas en IA</CardDescription>
+                  </div>
+                  <ChartInfo title="Optimización de Precios">
+                    <p className="text-sm">Sugerencias de precio óptimo y el impacto estimado en ventas.</p>
+                  </ChartInfo>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
