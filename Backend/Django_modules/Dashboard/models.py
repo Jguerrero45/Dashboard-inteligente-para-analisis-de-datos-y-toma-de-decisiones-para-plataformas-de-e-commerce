@@ -12,7 +12,19 @@ class Clientes(models.Model):
     fecha_registro = models.DateField(
         ("Fecha de registro"), auto_now=False, auto_now_add=False)
     cantidad_compras = models.IntegerField()
-    tipo_cliente = models.CharField(max_length=50)
+    # Tipos de cliente
+    TIPO_VIP = 'vip'
+    TIPO_NUEVO = 'nuevo'
+    TIPO_FRECUENTE = 'frecuente'
+
+    TIPO_CLIENTE_CHOICES = [
+        (TIPO_VIP, 'VIP'),
+        (TIPO_NUEVO, 'Nuevo'),
+        (TIPO_FRECUENTE, 'Frecuente'),
+    ]
+
+    tipo_cliente = models.CharField(
+        max_length=20, choices=TIPO_CLIENTE_CHOICES, default=TIPO_NUEVO)
 
 
 class Productos(models.Model):
