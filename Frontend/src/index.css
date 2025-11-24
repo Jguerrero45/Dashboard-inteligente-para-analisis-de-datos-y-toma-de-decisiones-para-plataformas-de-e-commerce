@@ -71,8 +71,14 @@
   --color-chart-5: 340.6 82.2% 52.5%;
   --radius: 0.5rem;
   /* overlay dim used for sheets/modals; alpha-filled color that adapts to theme */
-  --overlay: rgba(0, 0, 0, 0.8);
+  /* Light-mode overlay: subtle white veil so images keep their color but text/buttons remain readable */
+  --overlay: rgba(255, 255, 255, 0.12);
+
+  /* Primary color for light mode: vivid blue to make primary buttons look correct in light theme */
+  --color-primary: 212 96% 40%;
+  --color-primary-foreground: 210 40% 98%;
 }
+
 
 /* When the `dark` class is present on <html>, switch the inline theme tokens.
    Next-themes toggles the `dark` class; using this ensures colors update for

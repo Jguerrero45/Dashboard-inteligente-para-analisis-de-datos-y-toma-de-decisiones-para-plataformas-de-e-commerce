@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { Menu, Moon, Sun, DollarSign, User, LogOut, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useCurrency } from "@/hooks/use-currency"
 
 const navigationItems = [
-  { name: "Dashboard", href: "/" },
+  { name: "Dashboard", href: "/dashboard" },
   { name: "Módulos", href: "/modulos" },
   { name: "Predicciones", href: "/predicciones" },
   { name: "Ventas", href: "/ventas" },
@@ -31,14 +31,15 @@ const navigationItems = [
 
 export function DashboardHeader() {
   const [isOpen, setIsOpen] = useState(false)
+  const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
-  const { currency, toggleCurrency } = useCurrency()
+  const { currency, toggleCurrency, exchangeRate } = useCurrency()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6 lg:px-8">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/dashboard" className="flex items-center gap-2">
           <div
             className="flex h-10 w-10 items-center justify-center rounded-lg"
             style={{ background: "hsl(var(--brand-1))", color: "hsl(var(--brand-1) / 0.98)" }}
@@ -71,6 +72,8 @@ export function DashboardHeader() {
           >
             <DollarSign className="h-4 w-4" />
             <span className="font-semibold">{currency === "USD" ? "USD" : "Bs"}</span>
+            {/* Show current exchange rate when available */}
+            <span className="hidden sm:inline-block text-xs text-muted-foreground ml-2">{exchangeRate ? `1 USD ≈ ${new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(exchangeRate)} Bs` : '—'}</span>
           </Button>
 
           <Button variant="ghost" size="icon" className="hidden sm:flex relative">
@@ -113,7 +116,7 @@ export function DashboardHeader() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer">
+              <DropdownMenuItem className="cursor-pointer" onSelect={() => { localStorage.removeItem("isAuthenticated"); navigate('/'); }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   <LogOut className="mr-2 h-4 w-4" style={{ color: 'hsl(var(--color-negative))' }} />
                   <span style={{ color: 'hsl(var(--color-negative))' }}>Cerrar Sesión</span>

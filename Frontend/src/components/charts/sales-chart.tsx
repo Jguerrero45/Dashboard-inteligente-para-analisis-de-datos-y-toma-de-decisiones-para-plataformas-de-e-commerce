@@ -64,6 +64,15 @@ export function SalesChart() {
             />
           </AreaChart>
         </ChartContainer>
+        {/* Resumen numérico exacto debajo de la gráfica */}
+        <div className="mt-4 space-y-2">
+          {data.map((d) => (
+            <div key={d.month} className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{d.month}</span>
+              <span className="font-medium">{useCurrency().formatPrice(d.sales)}</span>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )

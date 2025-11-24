@@ -55,6 +55,15 @@ export function ProfitMarginChart() {
                         <Line yAxisId="right" type="monotone" dataKey="margin" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={{ r: 3 }} />
                     </ComposedChart>
                 </ChartContainer>
+                {/* Resumen numérico exacto debajo de la gráfica */}
+                <div className="mt-4 space-y-2">
+                    {data.map((item) => (
+                        <div key={item.category} className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{item.category}</span>
+                            <span className="font-medium">{useCurrency().formatPrice(item.revenue)} · {useCurrency().formatPrice(item.cost)} · {useCurrency().formatPrice(item.profit)} · {item.margin.toFixed(2)}%</span>
+                        </div>
+                    ))}
+                </div>
             </CardContent>
         </Card>
     )

@@ -1,6 +1,5 @@
 "use client"
 
-import React from "react"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
 import SettingsLayout from "@/components/settings/SettingsLayout"

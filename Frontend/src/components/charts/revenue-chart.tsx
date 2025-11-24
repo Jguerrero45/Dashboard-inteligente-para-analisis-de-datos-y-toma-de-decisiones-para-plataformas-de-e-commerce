@@ -56,6 +56,17 @@ export function RevenueChart() {
             <Bar dataKey="cost" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ChartContainer>
+        {/* Resumen numérico exacto debajo de la gráfica */}
+        <div className="mt-4 space-y-2">
+          {data.map((item) => (
+            <div key={item.category} className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{item.category}</span>
+              <span className="font-medium">
+                {useCurrency().formatPrice(item.revenue)} / {useCurrency().formatPrice(item.cost)}
+              </span>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )

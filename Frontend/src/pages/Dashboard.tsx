@@ -1,7 +1,6 @@
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
 import { MetricsCards } from "@/components/metrics-cards"
-import { AIRecommendations } from "@/components/ai-recommendations"
 import { SalesChart } from "@/components/charts/sales-chart"
 import { RevenueChart } from "@/components/charts/revenue-chart"
 import { ProductsChart } from "@/components/charts/products-chart"
@@ -27,7 +26,6 @@ export default function Dashboard() {
 
           <MetricsCards />
 
-          <AIRecommendations />
 
           <div className="grid gap-6 md:grid-cols-2">
             <SalesChart />

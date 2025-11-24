@@ -1,4 +1,8 @@
-export function getOverlayRoot() {
+export function getOverlayRoot(): HTMLElement | null {
+    // Minimal safe implementation: return existing overlays container if present.
+    if (typeof document === "undefined") return null
+    const root = document.getElementById("__app_overlays")
+    return root
     /* if (typeof document === "undefined") return null
         let root = document.getElementById("__app_overlays")
         if (!root) {
@@ -243,6 +247,5 @@ export function getOverlayRoot() {
         // ignore
     }
         }
-    return root
     */
 }

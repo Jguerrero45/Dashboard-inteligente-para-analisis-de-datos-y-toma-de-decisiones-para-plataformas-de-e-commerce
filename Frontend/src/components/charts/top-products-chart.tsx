@@ -50,6 +50,15 @@ export function TopProductsChart() {
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>
+        {/* Resumen numérico exacto debajo de la gráfica */}
+        <div className="mt-4 space-y-2">
+          {topProductsData.map((p) => (
+            <div key={p.producto} className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{p.producto}</span>
+              <span className="font-medium">{formatPrice(p.ventas)} · {p.unidades} unidades</span>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )

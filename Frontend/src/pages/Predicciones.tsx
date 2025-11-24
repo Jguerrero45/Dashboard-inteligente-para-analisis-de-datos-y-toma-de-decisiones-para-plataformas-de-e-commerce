@@ -239,9 +239,22 @@ export default function PrediccionesPage() {
                   </LineChart>
                 </ResponsiveContainer>
               </ChartContainer>
-              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-                <Badge variant="outline">Precisión promedio: 91%</Badge>
-                <Badge variant="outline">Modelo: LSTM + Random Forest</Badge>
+              {/* Resumen numérico exacto debajo de la gráfica de predicción de ventas */}
+              <div className="mt-4">
+                <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Badge variant="outline">Precisión promedio: 91%</Badge>
+                  <Badge variant="outline">Modelo: LSTM + Random Forest</Badge>
+                </div>
+                <div className="space-y-2">
+                  {salesPredictionData.map((s) => (
+                    <div key={s.month} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{s.month}</span>
+                      <span className="font-medium">
+                        Real: {s.real !== null ? formatPrice(s.real) : "N/A"} · Predicción: {formatPrice(s.prediccion)} · {s.confianza}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -285,6 +298,15 @@ export default function PrediccionesPage() {
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
+              {/* Resumen numérico exacto debajo de la gráfica de demanda por producto */}
+              <div className="mt-4 space-y-2">
+                {demandPredictionData.map((d) => (
+                  <div key={d.producto} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{d.producto}</span>
+                    <span className="font-medium">Actual: {d.demandaActual} · Predicha: {d.demandaPredicha} · Cambio: {d.cambio}%</span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
@@ -375,6 +397,15 @@ export default function PrediccionesPage() {
                   </AreaChart>
                 </ResponsiveContainer>
               </ChartContainer>
+              {/* Resumen numérico exacto debajo de la gráfica de estacionalidad */}
+              <div className="mt-4 space-y-2">
+                {seasonalityData.map((s) => (
+                  <div key={s.mes} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{s.mes}</span>
+                    <span className="font-medium">Ventas: {formatPrice(s.ventas)} · Predicción: {formatPrice(s.prediccion)}</span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
@@ -427,6 +458,15 @@ export default function PrediccionesPage() {
                   </RadarChart>
                 </ResponsiveContainer>
               </ChartContainer>
+              {/* Resumen numérico exacto debajo del radar de rendimiento por categoría */}
+              <div className="mt-4 space-y-2">
+                {categoryPerformanceData.map((c) => (
+                  <div key={c.categoria} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{c.categoria}</span>
+                    <span className="font-medium">Actual: {c.actual}% · Predicho: {c.predicho}%</span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 

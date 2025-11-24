@@ -44,6 +44,15 @@ export function ProductsChart() {
             </Pie>
           </PieChart>
         </ChartContainer>
+        {/* Resumen numérico exacto debajo de la gráfica */}
+        <div className="mt-4 space-y-2">
+          {data.map((entry) => (
+            <div key={entry.name} className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{entry.name}</span>
+              <span className="font-medium">{entry.value}%</span>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )
