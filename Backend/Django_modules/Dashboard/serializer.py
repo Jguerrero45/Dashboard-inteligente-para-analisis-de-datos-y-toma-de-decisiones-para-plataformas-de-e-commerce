@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Clientes, Productos, Ventas, ModeloPrediccion, EntradaPrediccion, RecomendacionIA
+from .models import Clientes, Productos, Ventas, ModeloPrediccion, EntradaPrediccion, RecomendacionIA, VentaItem
 
 
 class Clientes_Serializers(serializers.ModelSerializer):
@@ -35,4 +35,10 @@ class EntradaPrediccion_Serializers(serializers.ModelSerializer):
 class RecomendacionIA_Serializers(serializers.ModelSerializer):
     class Meta:
         model = RecomendacionIA
+        fields = '__all__'
+
+
+class VentaItem_Serializers(serializers.ModelSerializer):
+    class Meta:
+        model = VentaItem
         fields = '__all__'

@@ -3,8 +3,9 @@
 # contraseña: 1234
 
 from django.contrib import admin
-from .models import Clientes, Productos, Ventas
+from .models import Clientes, Productos, Ventas, VentaItem
 
 admin.site.register(Clientes)
 admin.site.register(Productos)
 admin.site.register(Ventas)
+admin.site.register(VentaItem)

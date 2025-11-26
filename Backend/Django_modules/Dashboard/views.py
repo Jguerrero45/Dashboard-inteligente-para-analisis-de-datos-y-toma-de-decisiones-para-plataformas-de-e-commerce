@@ -1,10 +1,11 @@
 from rest_framework import viewsets
 from django.shortcuts import render
-from .models import Clientes, Productos, Ventas, ModeloPrediccion, EntradaPrediccion, RecomendacionIA
+from .models import Clientes, Productos, Ventas, ModeloPrediccion, EntradaPrediccion, RecomendacionIA, VentaItem
 from .serializer import (
     Clientes_Serializers,
     Productos_Serializers,
     Ventas_Serializers,
+    VentaItem_Serializers,
     ModeloPrediccion_Serializers,
     EntradaPrediccion_Serializers,
     RecomendacionIA_Serializers,
@@ -44,3 +45,8 @@ class EntradaPrediccion_ViewSet(viewsets.ModelViewSet):
 class RecomendacionIA_ViewSet(viewsets.ModelViewSet):
     queryset = RecomendacionIA.objects.all()
     serializer_class = RecomendacionIA_Serializers
+
+
+class VentaItem_ViewSet(viewsets.ModelViewSet):
+    queryset = VentaItem.objects.all()
+    serializer_class = VentaItem_Serializers

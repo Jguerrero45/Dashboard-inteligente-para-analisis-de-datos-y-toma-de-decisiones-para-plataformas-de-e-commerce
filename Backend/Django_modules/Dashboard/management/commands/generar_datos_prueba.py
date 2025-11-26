@@ -6,7 +6,7 @@ import random
 
 from faker import Faker
 
-from Dashboard.models import Clientes, Productos, Ventas
+from Dashboard.models import Clientes, Productos, Ventas, VentaItem
 
 
 class Command(BaseCommand):
@@ -38,7 +38,8 @@ class Command(BaseCommand):
 
         if clear:
             self.stdout.write(
-                "Eliminando datos existentes (Ventas, Productos, Clientes)...")
+                "Eliminando datos existentes (VentaItems, Ventas, Productos, Clientes)...")
+            VentaItem.objects.all().delete()
             Ventas.objects.all().delete()
             Productos.objects.all().delete()
             Clientes.objects.all().delete()
@@ -263,40 +264,66 @@ class Command(BaseCommand):
         start_2025 = datetime(2025, 1, 1, 0, 0, 0, tzinfo=tz)
         end_2025 = datetime(2025, 12, 31, 23, 59, 59, tzinfo=tz)
 
+        # Crear ventas (cada venta puede contener N items)
+        ventas_creadas = 0
         for _ in range(n_ventas):
-            prod = random.choice(productos_qs)
-            cliente = random.choice(clientes_qs)
-            cantidad = random.randint(1, 5)
-            # precio_unitario en Ventas es DecimalField
-            precio_unitario = Decimal(f"{prod.precio:.2f}")
-            total = (precio_unitario * cantidad).quantize(Decimal('0.01'))
-
             fecha_venta = fake.date_time_between_dates(
                 datetime_start=start_2025, datetime_end=end_2025, tzinfo=tz)
 
-            v = Ventas(
+            cliente = random.choice(clientes_qs)
+
+            # Empezar con 0 total; lo calculamos a partir de los items
+            metodo = random.choices(
+                ['efectivo', 'tarjeta', 'pago_movil', 'transferencia'],
+                weights=[5, 95/3, 95/3, 95/3], k=1
+            )[0]
+            estado = random.choices(
+                ['pendiente', 'completada', 'cancelada', 'reembolsada'],
+                weights=[75, 10, 10, 5], k=1
+            )[0]
+
+            # crear cabecera de venta sin total (lo actualizaremos)
+            v = Ventas.objects.create(
                 fecha=fecha_venta,
                 cliente=cliente,
-                producto=prod,
-                cantidad=cantidad,
-                precio_unitario=precio_unitario,
-                precio_total=total,
-                # metodo_compra: efectivo 5%, las otras tres comparten equitativamente el 95%
-                metodo_compra=random.choices(
-                    ['efectivo', 'tarjeta', 'pago_movil', 'transferencia'],
-                    weights=[5, 95/3, 95/3, 95/3], k=1
-                )[0],
-                # estados con probabilidades: pendiente 75%, completada 10%, cancelada 10%, reembolsada 5%
-                estado=random.choices(
-                    ['pendiente', 'completada', 'cancelada', 'reembolsada'],
-                    weights=[75, 10, 10, 5], k=1
-                )[0],
+                precio_total=Decimal('0.00'),
+                metodo_compra=metodo,
+                estado=estado,
             )
-            ventas.append(v)
 
-        Ventas.objects.bulk_create(ventas, batch_size=500)
+            # número de ítems por venta (1..5)
+            n_items = random.randint(1, 5)
+            items_para_venta = []
+            total_venta = Decimal('0.00')
+
+            for _i in range(n_items):
+                prod = random.choice(productos_qs)
+                cantidad = random.randint(1, 5)
+                precio_unitario = Decimal(f"{prod.precio:.2f}")
+                total_item = (precio_unitario *
+                              cantidad).quantize(Decimal('0.01'))
+
+                item = VentaItem(
+                    venta=v,
+                    producto=prod,
+                    cantidad=cantidad,
+                    precio_unitario=precio_unitario,
+                    precio_total=total_item,
+                )
+                items_para_venta.append(item)
+                total_venta += total_item
+
+            # crear items en bloque para esta venta
+            VentaItem.objects.bulk_create(items_para_venta)
+
+            # actualizar total de la venta
+            v.precio_total = total_venta.quantize(Decimal('0.01'))
+            v.save()
+
+            ventas_creadas += 1
+
         self.stdout.write(self.style.SUCCESS(
-            f"Ventas creadas: {len(ventas)} (todas en 2025)"))
+            f"Ventas creadas: {ventas_creadas} (todas en 2025)"))
 
         self.stdout.write(self.style.SUCCESS(
             "Generación de datos completada."))

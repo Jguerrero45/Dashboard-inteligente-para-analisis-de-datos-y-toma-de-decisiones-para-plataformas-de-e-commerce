@@ -72,6 +72,13 @@ class Productos(models.Model):
 
 class Ventas(models.Model):
 
+    """Representa una transacción (venta) que puede contener N items.
+
+    Antes `Ventas` representaba una venta por producto. Para soportar pedidos
+    con múltiples productos se separa en `Ventas` (cabecera) y `VentaItem`
+    (líneas/items vinculados a la venta).
+    """
+
     fecha = models.DateTimeField()
     cliente = models.ForeignKey(
         Clientes,
@@ -79,16 +86,9 @@ class Ventas(models.Model):
         related_name='ventas',
     )
 
-    producto = models.ForeignKey(
-        Productos,
-        on_delete=models.PROTECT,
-        related_name='ventas',
-    )
-
-    cantidad = models.PositiveIntegerField()
-
-    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2)
-    precio_total = models.DecimalField(max_digits=12, decimal_places=2)
+    # total de la venta (suma de items). Opcionalmente puede calcularse al guardar
+    precio_total = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
 
     METODO_EFECTIVO = 'efectivo'
     METODO_TARJETA = 'tarjeta'
@@ -127,6 +127,30 @@ class Ventas(models.Model):
 
     class Meta:
         ordering = ['-fecha']
+
+
+class VentaItem(models.Model):
+    """Item (línea) de una venta: referencia a producto, cantidad y precios."""
+
+    venta = models.ForeignKey(
+        Ventas,
+        on_delete=models.CASCADE,
+        related_name='items',
+    )
+
+    producto = models.ForeignKey(
+        Productos,
+        on_delete=models.PROTECT,
+        related_name='venta_items',
+    )
+
+    cantidad = models.PositiveIntegerField()
+
+    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2)
+    precio_total = models.DecimalField(max_digits=12, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.cantidad} x {self.producto.nombre} @ {self.precio_unitario}"
 
 
 class ModeloPrediccion(models.Model):
