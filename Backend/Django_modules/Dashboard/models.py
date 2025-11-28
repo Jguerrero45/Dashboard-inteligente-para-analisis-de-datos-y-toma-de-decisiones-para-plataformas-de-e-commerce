@@ -1,5 +1,7 @@
-from django.db import models
+from django.db import models, IntegrityError
+import random
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 
 
 class Clientes(models.Model):
@@ -16,7 +18,7 @@ class Clientes(models.Model):
     TIPO_VIP = 'vip'
     TIPO_NUEVO = 'nuevo'
     TIPO_FRECUENTE = 'frecuente'
-
+    # Opciones para tipo de cliente
     TIPO_CLIENTE_CHOICES = [
         (TIPO_VIP, 'VIP'),
         (TIPO_NUEVO, 'Nuevo'),
@@ -25,14 +27,54 @@ class Clientes(models.Model):
 
     tipo_cliente = models.CharField(
         max_length=20, choices=TIPO_CLIENTE_CHOICES, default=TIPO_NUEVO)
+    # ID legible/mostrable persistente (opcionalmente diferente de la PK)
+    display_id = models.PositiveIntegerField(
+        null=True, blank=True, unique=True)
+
+    def save(self, *args, **kwargs):
+        # Asigna un display_id secuencial empezando en 1000 si aún no existe.
+        # Estrategia:
+        #  - Buscar el máximo display_id existente (>= 1000) y usar max+1.
+        #  - Si no existe ninguno, comenzar en 1000.
+        #  - En caso de condición de carrera en la base de datos (IntegrityError
+        #    por unique constraint), reintentar unas pocas veces incrementando.
+        if not self.display_id:
+            START = 1000
+            MAX_RETRIES = 5
+            for attempt in range(MAX_RETRIES):
+                # Obtener el máximo display_id actual >= START
+                qs = Clientes.objects.filter(
+                    display_id__isnull=False, display_id__gte=START)
+                max_row = qs.order_by('-display_id').first()
+                if max_row and max_row.display_id:
+                    candidate = max_row.display_id + 1
+                else:
+                    candidate = START
+
+                self.display_id = candidate
+                try:
+                    # Intentar guardar; si choque de unique ocurre, reintentar
+                    super().save(*args, **kwargs)
+                    return
+                except IntegrityError:
+                    # Otro proceso pudo haber tomado el mismo candidate.
+                    # Borrar el candidato y reintentar incrementando.
+                    self.display_id = None
+                    if attempt == MAX_RETRIES - 1:
+                        # Agotar reintentos: propagar error para que el operador
+                        # pueda investigar (o ejecutar la migración de datos manualmente).
+                        raise
+                    # si quedan reintentos, volver a intentar en el siguiente ciclo
+                    continue
+        else:
+            super().save(*args, **kwargs)
 
 
 class Productos(models.Model):
     nombre = models.CharField(max_length=150)
     categoria = models.CharField(max_length=200)
     precio = models.FloatField()
-    costo = models.FloatField()
-    utilidad = models.FloatField()
+    # costo y utilidad fueron removidos: se calculan a partir de precio cuando se necesite
     stock = models.IntegerField()
     vendidos = models.IntegerField()
     # Tendencias
@@ -277,5 +319,17 @@ class RecomendacionIA(models.Model):
         verbose_name = 'Recomendación IA'
         verbose_name_plural = 'Recomendaciones IA'
 
-    def __str__(self):
-        return f"{self.get_prioridad_display()} - {self.producto.nombre} - {self.fecha.date()}"
+
+class Tasa(models.Model):
+    """Modelo simple para registrar tasas asociadas a una fecha.
+
+    Cada instancia representa la tasa en una fecha determinada.
+    """
+
+    fecha = models.DateField(unique=True)
+    tasa = models.DecimalField(max_digits=10, decimal_places=6)
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha']

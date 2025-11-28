@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -12,106 +12,58 @@ import { useCurrency } from "@/hooks/use-currency"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
 
-// Datos de ejemplo de productos
-const productosData = [
-  {
-    id: "P001",
-    nombre: "Laptop Pro 15",
-    categoria: "Electrónica",
-    precio: 1299.99,
-    costo: 800.0,
-    stock: 45,
-    vendidos: 234,
-    tendencia: "up",
-    estado: "activo",
-  },
-  {
-    id: "P002",
-    nombre: "Mouse Gamer RGB",
-    categoria: "Accesorios",
-    precio: 49.99,
-    costo: 20.0,
-    stock: 156,
-    vendidos: 892,
-    tendencia: "up",
-    estado: "activo",
-  },
-  {
-    id: "P003",
-    nombre: "Teclado Mecánico",
-    categoria: "Accesorios",
-    precio: 89.99,
-    costo: 40.0,
-    stock: 23,
-    vendidos: 445,
-    tendencia: "down",
-    estado: "bajo-stock",
-  },
-  {
-    id: "P004",
-    nombre: "Monitor 4K 27",
-    categoria: "Electrónica",
-    precio: 449.99,
-    costo: 250.0,
-    stock: 67,
-    vendidos: 178,
-    tendencia: "up",
-    estado: "activo",
-  },
-  {
-    id: "P005",
-    nombre: "Webcam HD Pro",
-    categoria: "Accesorios",
-    precio: 79.99,
-    costo: 30.0,
-    stock: 89,
-    vendidos: 567,
-    tendencia: "up",
-    estado: "activo",
-  },
-  {
-    id: "P006",
-    nombre: "Auriculares Bluetooth",
-    categoria: "Audio",
-    precio: 129.99,
-    costo: 60.0,
-    stock: 12,
-    vendidos: 723,
-    tendencia: "down",
-    estado: "bajo-stock",
-  },
-  {
-    id: "P007",
-    nombre: "SSD 1TB NVMe",
-    categoria: "Almacenamiento",
-    precio: 159.99,
-    costo: 90.0,
-    stock: 134,
-    vendidos: 456,
-    tendencia: "up",
-    estado: "activo",
-  },
-  {
-    id: "P008",
-    nombre: "Router WiFi 6",
-    categoria: "Redes",
-    precio: 199.99,
-    costo: 120.0,
-    stock: 0,
-    vendidos: 289,
-    tendencia: "down",
-    estado: "agotado",
-  },
-]
+// Estado local: será llenado desde la API
+const productosData: Array<any> = []
 
 export default function ProductosPage() {
   const { formatPrice } = useCurrency()
   const [searchTerm, setSearchTerm] = useState("")
   const [categoriaFilter, setCategoriaFilter] = useState("todas")
   const [estadoFilter, setEstadoFilter] = useState("todos")
+  const [productos, setProductos] = useState<any[]>(productosData)
+  const [loading, setLoading] = useState(false)
+  const [errorLoad, setErrorLoad] = useState<string | null>(null)
+
+  // Cargar productos desde la API al montar
+  useEffect(() => {
+    setLoading(true)
+    fetch('/api/Productos/')
+      .then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.detail || 'Error al cargar productos')
+        }
+        return res.json()
+      })
+      .then((data) => {
+        const normalized = data.map((p: any) => ({
+          origId: p.id,
+          id: p.id,
+          nombre: p.nombre,
+          categoria: p.categoria,
+          precio: parseFloat(p.precio) || 0,
+          stock: Number(p.stock) || 0,
+          // preferimos el agregado ventas_count si existe, si no fallback al campo `vendidos`
+          vendidos: p.ventas_count != null ? Number(p.ventas_count) : (p.vendidos || 0),
+          ventas_count: p.ventas_count,
+          ingreso_total: p.ingreso_total != null ? parseFloat(p.ingreso_total) : 0,
+          vendidos_total: p.vendidos_total != null ? Number(p.vendidos_total) : null,
+          ultima_venta: p.ultima_venta ? new Date(p.ultima_venta) : null,
+          tendencias: p.tendencias,
+          tendencia: (p.tendencias === 'alta' ? 'up' : (p.tendencias === 'baja' ? 'down' : 'neutral')),
+          estado: p.estado,
+        }))
+        setProductos(normalized)
+      })
+      .catch((err) => {
+        console.error('Error cargando productos', err)
+        setErrorLoad(String(err))
+      })
+      .finally(() => setLoading(false))
+  }, [])
 
   // Filtrar productos
-  const productosFiltrados = productosData.filter((producto) => {
+  const productosFiltrados = productos.filter((producto) => {
     const matchSearch =
       producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       producto.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -124,10 +76,22 @@ export default function ProductosPage() {
   const categorias = ["todas", ...Array.from(new Set(productosData.map((p) => p.categoria)))]
 
   // Calcular estadísticas
-  const totalProductos = productosData.length
-  const stockTotal = productosData.reduce((sum, p) => sum + p.stock, 0)
-  const productosActivos = productosData.filter((p) => p.estado === "activo").length
-  const productosBajoStock = productosData.filter((p) => p.estado === "bajo-stock").length
+  const totalProductos = productos.length
+  const stockTotal = productos.reduce((sum, p) => sum + (Number(p.stock) || 0), 0)
+  const productosActivos = productos.filter((p) => p.estado === "activo").length
+  const productosBajoStock = productos.filter((p) => p.estado === "bajo-stock").length
+
+  // Paginación / carrusel: limitar a 10
+  const pageSize = 10
+  const [page, setPage] = useState(0)
+
+  const totalPages = Math.max(1, Math.ceil(productosFiltrados.length / pageSize))
+  const pagedProductos = productosFiltrados.slice(page * pageSize, (page + 1) * pageSize)
+
+  // reset page when filters/search change
+  useEffect(() => {
+    setPage(0)
+  }, [searchTerm, categoriaFilter, estadoFilter])
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -256,6 +220,14 @@ export default function ProductosPage() {
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
+                <div className="flex items-center justify-between px-4 py-2">
+                  <div className="flex items-center gap-2">
+                    <Button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0} variant="outline">←</Button>
+                    <span className="text-sm">Página {page + 1} / {totalPages}</span>
+                    <Button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1} variant="outline">→</Button>
+                  </div>
+                  {loading ? <div className="text-sm">Cargando...</div> : errorLoad ? <div className="text-sm text-destructive">{errorLoad}</div> : null}
+                </div>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -263,8 +235,7 @@ export default function ProductosPage() {
                       <TableHead>Producto</TableHead>
                       <TableHead>Categoría</TableHead>
                       <TableHead>Precio</TableHead>
-                      <TableHead>Costo</TableHead>
-                      <TableHead>Utilidad</TableHead>
+
                       <TableHead>Stock</TableHead>
                       <TableHead>Vendidos</TableHead>
                       <TableHead>Tendencia</TableHead>
@@ -272,25 +243,22 @@ export default function ProductosPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {productosFiltrados.length === 0 ? (
+                    {pagedProductos.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={10} className="text-center text-muted-foreground">
                           No se encontraron productos con los filtros aplicados
                         </TableCell>
                       </TableRow>
                     ) : (
-                      productosFiltrados.map((producto) => {
-                        const utilidad = (producto.precio ?? 0) - (producto.costo ?? 0)
+                      pagedProductos.map((producto) => {
+                        const utilidad = null
                         return (
-                          <TableRow key={producto.id}>
+                          <TableRow key={producto.origId}>
                             <TableCell className="font-medium">{producto.id}</TableCell>
                             <TableCell>{producto.nombre}</TableCell>
                             <TableCell>{producto.categoria}</TableCell>
                             <TableCell className="font-semibold">{formatPrice(producto.precio)}</TableCell>
-                            <TableCell className="text-muted-foreground">{formatPrice(producto.costo)}</TableCell>
-                            <TableCell className="font-semibold" style={{ color: utilidad < 0 ? 'hsl(var(--color-negative))' : 'inherit' }}>
-                              {formatPrice(utilidad)}
-                            </TableCell>
+
                             <TableCell>
                               <span style={{
                                 color: producto.stock === 0 ? 'hsl(var(--color-negative))' : producto.stock < 30 ? 'hsl(var(--brand-4))' : undefined,

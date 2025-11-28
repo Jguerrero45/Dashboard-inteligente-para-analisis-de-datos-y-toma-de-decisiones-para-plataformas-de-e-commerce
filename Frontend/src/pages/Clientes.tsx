@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -16,64 +16,8 @@ import { es } from "date-fns/locale"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
 
-// Datos de ejemplo de clientes
-const clientesData = [
-    {
-        id: "C001",
-        nombre: "Juan Pérez",
-        email: "juan.perez@example.com",
-        telefono: "+57 300 1234567",
-        fechaRegistro: new Date(2023, 6, 12),
-        compras: 12,
-        gastoTotal: 4599.5,
-        segmento: "VIP",
-        estado: "activo",
-    },
-    {
-        id: "C002",
-        nombre: "María González",
-        email: "maria.gonzalez@example.com",
-        telefono: "+57 310 7654321",
-        fechaRegistro: new Date(2024, 0, 5),
-        compras: 3,
-        gastoTotal: 249.95,
-        segmento: "Reciente",
-        estado: "activo",
-    },
-    {
-        id: "C003",
-        nombre: "Carlos Rodríguez",
-        email: "c.rodriguez@example.com",
-        telefono: "+57 320 9876543",
-        fechaRegistro: new Date(2022, 10, 20),
-        compras: 25,
-        gastoTotal: 11299.99,
-        segmento: "Frecuente",
-        estado: "activo",
-    },
-    {
-        id: "C004",
-        nombre: "Ana Martínez",
-        email: "ana.martinez@example.com",
-        telefono: "+57 311 5553333",
-        fechaRegistro: new Date(2023, 3, 3),
-        compras: 1,
-        gastoTotal: 89.99,
-        segmento: "Nuevo",
-        estado: "inactivo",
-    },
-    {
-        id: "C005",
-        nombre: "Luis Fernández",
-        email: "luis.fernandez@example.com",
-        telefono: "+57 315 4442222",
-        fechaRegistro: new Date(2021, 8, 14),
-        compras: 40,
-        gastoTotal: 20499.5,
-        segmento: "VIP",
-        estado: "activo",
-    },
-]
+// Estado local: será llenado desde la API
+const clientesData: Array<any> = []
 
 export default function ClientesPage() {
     const { formatPrice } = useCurrency()
@@ -82,13 +26,56 @@ export default function ClientesPage() {
     const [estadoFilter, setEstadoFilter] = useState("todos")
     const [dateFrom, setDateFrom] = useState<Date>()
     const [dateTo, setDateTo] = useState<Date>()
+    const [clientes, setClientes] = useState<any[]>(clientesData)
+    const [loading, setLoading] = useState(false)
+    const [errorLoad, setErrorLoad] = useState<string | null>(null)
+
+    useEffect(() => {
+        setLoading(true)
+        fetch('/api/Clientes/')
+            .then(async (res) => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}))
+                    throw new Error(data.detail || 'Error al cargar clientes')
+                }
+                return res.json()
+            })
+            .then((data) => {
+                // Convertir fecha_registro a Date y normalizar campos
+                const normalized = data.map((c: any) => ({
+                    // origId: id real en BD (estable para key)
+                    origId: c.id,
+                    // id: conservar la propiedad id por compatibilidad (no usada como key)
+                    id: c.id,
+                    // displayId: id persistente definido en backend (ej: 1000+)
+                    displayId: c.display_id || c.id,
+                    nombre: c.nombre,
+                    email: c.email,
+                    telefono: c.telefono || '',
+                    fechaRegistro: c.fecha_registro ? new Date(c.fecha_registro) : null,
+                    compras: c.compras || 0,
+                    gastoTotal: parseFloat(c.gasto_total) || 0,
+                    segmento: c.segmento || c.tipo_cliente || 'N/A',
+                    estado: c.estado || 'inactivo',
+                }))
+                setClientes(normalized)
+            })
+            .catch((err) => {
+                console.error('Error cargando clientes', err)
+                setErrorLoad(String(err))
+            })
+            .finally(() => setLoading(false))
+    }, [])
 
     // Filtrar clientes
-    const clientesFiltrados = clientesData.filter((c) => {
+    const clientesFiltrados = clientes.filter((c) => {
+        const idStr = String(c.displayId || c.origId || '')
+        const nombreStr = String(c.nombre || '')
+        const emailStr = String(c.email || '')
         const matchSearch =
-            c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.email.toLowerCase().includes(searchTerm.toLowerCase())
+            idStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            nombreStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            emailStr.toLowerCase().includes(searchTerm.toLowerCase())
         const matchSegmento = segmentoFilter === "todos" || c.segmento === segmentoFilter
         const matchEstado = estadoFilter === "todos" || c.estado === estadoFilter
         const matchDateFrom = !dateFrom || c.fechaRegistro >= dateFrom
@@ -99,11 +86,43 @@ export default function ClientesPage() {
     // Estadísticas
     const totalClientes = clientesFiltrados.length
     const clientesActivos = clientesFiltrados.filter((c) => c.estado === "activo").length
-    const gastoTotal = clientesFiltrados.reduce((sum, c) => sum + c.gastoTotal, 0)
+    const gastoTotal = clientesFiltrados.reduce((sum, c) => sum + (Number(c.gastoTotal) || 0), 0)
     const gastoPromedio = totalClientes > 0 ? gastoTotal / totalClientes : 0
 
     // Segmentos únicos
-    const segmentos = ["todos", ...Array.from(new Set(clientesData.map((c) => c.segmento)))]
+    const segmentos = ["todos", ...Array.from(new Set(clientes.map((c) => c.segmento)))]
+
+    // Paginación / carrusel (limitar a 10 según petición)
+    const pageSize = 10
+    const [page, setPage] = useState(0)
+
+    // Ordenamiento
+    const [sortBy, setSortBy] = useState<'fecha' | 'gasto'>('fecha')
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
+    // Aplicar ordenamiento antes de paginar
+    const sortedClientes = [...clientesFiltrados].sort((a, b) => {
+        let valA: any = 0
+        let valB: any = 0
+        if (sortBy === 'fecha') {
+            valA = a.fechaRegistro ? a.fechaRegistro.getTime() : 0
+            valB = b.fechaRegistro ? b.fechaRegistro.getTime() : 0
+        } else {
+            valA = Number(a.gastoTotal) || 0
+            valB = Number(b.gastoTotal) || 0
+        }
+        if (valA < valB) return sortDir === 'asc' ? -1 : 1
+        if (valA > valB) return sortDir === 'asc' ? 1 : -1
+        return 0
+    })
+
+    const totalPages = Math.max(1, Math.ceil(sortedClientes.length / pageSize))
+    const pagedClientes = sortedClientes.slice(page * pageSize, (page + 1) * pageSize)
+
+    // reset page when filters / sorting / search change to avoid stale page indices
+    useEffect(() => {
+        setPage(0)
+    }, [searchTerm, segmentoFilter, estadoFilter, dateFrom, dateTo, sortBy, sortDir])
 
     return (
         <div className="flex min-h-screen flex-col bg-background">
@@ -128,6 +147,8 @@ export default function ClientesPage() {
                                 <p className="text-xs text-muted-foreground">Clientes filtrados</p>
                             </CardContent>
                         </Card>
+
+
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Activos</CardTitle>
@@ -224,6 +245,8 @@ export default function ClientesPage() {
                                     </Button>
                                 </div>
 
+                                {/* (Orden moved to a separate Card below) */}
+
                                 <div className="flex flex-col gap-4 md:flex-row md:items-end">
                                     <div className="flex-1">
                                         <label className="text-sm font-medium mb-2 block">Fecha Desde</label>
@@ -258,6 +281,28 @@ export default function ClientesPage() {
                         </CardContent>
                     </Card>
 
+                    {/* Ordenamiento (fecha / gasto) separado, colocado después de Filtros como en Ventas */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Ordenar</CardTitle>
+                            <CardDescription>Ordenar los clientes en la lista</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center gap-4">
+                                <label className="text-sm font-medium">Ordenar por:</label>
+                                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="rounded-md border px-3 py-2 text-sm">
+                                    <option value="fecha">Fecha</option>
+                                    <option value="gasto">Total gastado</option>
+                                </select>
+
+                                <select value={sortDir} onChange={(e) => setSortDir(e.target.value as any)} className="rounded-md border px-3 py-2 text-sm">
+                                    <option value="desc">Mayor → Menor</option>
+                                    <option value="asc">Menor → Mayor</option>
+                                </select>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* Tabla de Clientes */}
                     <Card>
                         <CardHeader>
@@ -266,6 +311,14 @@ export default function ClientesPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="rounded-md border">
+                                <div className="flex items-center justify-between px-4 py-2">
+                                    <div className="flex items-center gap-2">
+                                        <Button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0} variant="outline">←</Button>
+                                        <span className="text-sm">Página {page + 1} / {totalPages}</span>
+                                        <Button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1} variant="outline">→</Button>
+                                    </div>
+                                    {loading ? <div className="text-sm">Cargando...</div> : errorLoad ? <div className="text-sm text-destructive">{errorLoad}</div> : null}
+                                </div>
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -281,20 +334,20 @@ export default function ClientesPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {clientesFiltrados.length === 0 ? (
+                                        {pagedClientes.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={9} className="text-center text-muted-foreground">
                                                     No se encontraron clientes con los filtros aplicados
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            clientesFiltrados.map((c) => (
-                                                <TableRow key={c.id}>
-                                                    <TableCell className="font-medium">{c.id}</TableCell>
+                                            pagedClientes.map((c) => (
+                                                <TableRow key={c.origId}>
+                                                    <TableCell className="font-medium">{c.displayId}</TableCell>
                                                     <TableCell>{c.nombre}</TableCell>
                                                     <TableCell>{c.email}</TableCell>
                                                     <TableCell>{c.telefono}</TableCell>
-                                                    <TableCell>{format(c.fechaRegistro, "dd/MM/yyyy")}</TableCell>
+                                                    <TableCell>{c.fechaRegistro ? format(c.fechaRegistro, "dd/MM/yyyy") : '-'}</TableCell>
                                                     <TableCell>{c.compras}</TableCell>
                                                     <TableCell className="font-semibold">{formatPrice(c.gastoTotal)}</TableCell>
                                                     <TableCell>{c.segmento}</TableCell>

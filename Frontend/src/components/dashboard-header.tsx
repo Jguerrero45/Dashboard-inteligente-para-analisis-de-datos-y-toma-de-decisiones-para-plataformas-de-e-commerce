@@ -26,7 +26,6 @@ const navigationItems = [
   { name: "Productos", href: "/productos" },
   { name: "Recomendaciones IA", href: "/ia-recomendaciones" },
   { name: "Reportes", href: "/reportes" },
-  { name: "Finanzas", href: "/finanzas" },
 ]
 
 export function DashboardHeader() {

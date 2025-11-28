@@ -54,7 +54,7 @@ class Command(BaseCommand):
             "Alimentos",
         ]
 
-        # Crear clientes
+        # Crear clientes con distribución controlada
         clientes = []
         telefonos_prefijos = ['424', '414', '422', '412', '416', '426']
         ciudades_venezuela = [
@@ -76,16 +76,22 @@ class Command(BaseCommand):
         start_2025_date = datetime(2025, 1, 1).date()
         end_2025_date = datetime(2025, 12, 31).date()
 
-        for _ in range(n_clientes):
-            # cantidad de compras y asignación de tipo según reglas
-            cantidad_compras = random.randint(0, 50)
-            if cantidad_compras == 0:
-                tipo_cliente = 'nuevo'
-            elif cantidad_compras > 25:
-                tipo_cliente = 'vip'
-            else:
-                tipo_cliente = 'frecuente'
+        # calcular cantidades por segmento: 15% vip, 10% nuevo, resto frecuentes
+        n_vip = int(round(n_clientes * 0.15))
+        n_nuevo = int(round(n_clientes * 0.10))
+        n_frecuente = max(0, n_clientes - n_vip - n_nuevo)
 
+        clientes_info = []
+        for _ in range(n_vip):
+            clientes_info.append(('vip', random.randint(51, 200)))
+        for _ in range(n_nuevo):
+            clientes_info.append(('nuevo', random.randint(0, 5)))
+        for _ in range(n_frecuente):
+            clientes_info.append(('frecuente', random.randint(6, 50)))
+
+        random.shuffle(clientes_info)
+
+        for tipo_cliente, cantidad_compras in clientes_info:
             # cédula formato 00.000.000 con mínimo 1.000.000 y máximo 34.000.000
             num_cedula = random.randint(1_000_000, 34_000_000)
             s = f"{num_cedula:08d}"
@@ -116,23 +122,7 @@ class Command(BaseCommand):
 
         Clientes.objects.bulk_create(clientes, batch_size=500)
         clientes_qs = list(Clientes.objects.all())
-        # Verificar y corregir reglas de tipo_cliente (si hay inconsistencias)
         from collections import Counter
-
-        inconsistencias = []
-        for c in clientes_qs:
-            if c.cantidad_compras == 0 and c.tipo_cliente != 'nuevo':
-                c.tipo_cliente = 'nuevo'
-                inconsistencias.append(c)
-            elif c.tipo_cliente == 'vip' and c.cantidad_compras <= 25:
-                # degradar a frecuente si no cumple el umbral
-                c.tipo_cliente = 'frecuente'
-                inconsistencias.append(c)
-
-        if inconsistencias:
-            Clientes.objects.bulk_update(inconsistencias, ['tipo_cliente'])
-
-        clientes_qs = list(Clientes.objects.all())
         counts = Counter([c.tipo_cliente for c in clientes_qs])
         self.stdout.write(self.style.SUCCESS(
             f"Clientes creados: {len(clientes_qs)} | breakdown: {dict(counts)}"))
@@ -189,6 +179,21 @@ class Command(BaseCommand):
             categorias_n[cat_choice] += 1
 
         nombres_generados = set()
+        # Preparar distribución de stock globalmente para cumplir porcentajes
+        total_productos = sum(categorias_n.values())
+        n_no_stock = int(round(total_productos * 0.06))  # 6% sin stock
+        n_bajo = int(round(total_productos * 0.15))      # 15% bajo en stock
+        n_rest = max(0, total_productos - n_no_stock - n_bajo)
+
+        stock_values = []
+        # no stock
+        stock_values += [0] * n_no_stock
+        # bajo stock: 1..49
+        stock_values += [random.randint(1, 49) for _ in range(n_bajo)]
+        # stock normal: 50..700
+        stock_values += [random.randint(50, 700) for _ in range(n_rest)]
+        random.shuffle(stock_values)
+
         for cat, count in categorias_n.items():
             ejemplos = ejemplos_por_categoria.get(cat, [])
             for i in range(count):
@@ -215,8 +220,7 @@ class Command(BaseCommand):
                 else:  # Alimentos
                     precio = round(random.uniform(1.0, 50.0), 2)
 
-                costo = round(precio * random.uniform(0.3, 0.75), 2)
-                utilidad = round(precio - costo, 2)
+                # costo y utilidad se omiten: fueron removidos del modelo
 
                 # cantidad vendida histórica (para definir tendencia)
                 # ahora el máximo de vendidos es 250
@@ -230,8 +234,8 @@ class Command(BaseCommand):
                 else:
                     tendencia = 'baja'
 
-                # stock máximo ahora 700
-                stock_val = random.randint(0, 700)
+                # tomar un valor de stock precomputado para cumplir proporciones
+                stock_val = stock_values.pop() if stock_values else random.randint(0, 700)
                 # estado según stock: 0 -> agotado, <50 -> bajo, else disponible
                 if stock_val == 0:
                     estado = 'agotado'
@@ -244,8 +248,7 @@ class Command(BaseCommand):
                     nombre=nombre,
                     categoria=cat,
                     precio=float(precio),
-                    costo=float(costo),
-                    utilidad=float(utilidad),
+                    # costo/utilidad removidos
                     stock=stock_val,
                     vendidos=vendidos_count,
                     tendencias=tendencia,
@@ -277,9 +280,10 @@ class Command(BaseCommand):
                 ['efectivo', 'tarjeta', 'pago_movil', 'transferencia'],
                 weights=[5, 95/3, 95/3, 95/3], k=1
             )[0]
+            # Estados de venta: 70% completada, 20% pendiente, 10% cancelada
             estado = random.choices(
-                ['pendiente', 'completada', 'cancelada', 'reembolsada'],
-                weights=[75, 10, 10, 5], k=1
+                ['completada', 'pendiente', 'cancelada'],
+                weights=[70, 20, 10], k=1
             )[0]
 
             # crear cabecera de venta sin total (lo actualizaremos)

@@ -10,7 +10,6 @@ import Ventas from "./pages/Ventas"
 import Reportes from "./pages/Reportes"
 import Clientes from "./pages/Clientes"
 import IaRecomendaciones from "./pages/IaRecomendaciones"
-import Finanzas from "./pages/Finanzas"
 import Perfil from "./pages/Perfil"
 import Welcome from "./pages/Welcome"
 import Login from "./pages/Login"
@@ -39,7 +38,6 @@ function App() {
           <Route path="/ia-recomendaciones" element={<IaRecomendaciones />} />
           <Route path="/perfil" element={<Perfil />} />
           <Route path="/reportes" element={<Reportes />} />
-          <Route path="/finanzas" element={<Finanzas />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Routes>

@@ -20,10 +20,29 @@ const Login: React.FC = () => {
             setError("Por favor completa todos los campos.")
             return
         }
-        // Simulación de autenticación. Aquí conectarías con la API.
-        // Asumimos login exitoso para demo.
-        localStorage.setItem("isAuthenticated", "true")
-        navigate("/dashboard")
+        // Llamada al endpoint de token JWT del backend
+        fetch('/api/token/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: email, password }),
+        })
+            .then(async (res) => {
+                const data = await res.json()
+                if (!res.ok) {
+                    const msg = data.detail || 'Credenciales inválidas.'
+                    setError(msg)
+                    return
+                }
+                // Guardar tokens y marcar autenticado
+                localStorage.setItem('access_token', data.access)
+                if (data.refresh) localStorage.setItem('refresh_token', data.refresh)
+                localStorage.setItem('isAuthenticated', 'true')
+                navigate('/dashboard')
+            })
+            .catch((err) => {
+                console.error('Login error', err)
+                setError('Error de conexión con el servidor.')
+            })
     }
 
     return (

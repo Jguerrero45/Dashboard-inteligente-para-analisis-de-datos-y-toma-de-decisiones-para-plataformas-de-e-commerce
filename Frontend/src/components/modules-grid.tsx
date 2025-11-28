@@ -1,7 +1,7 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { BarChart3, ShoppingCart, Package, Users, FileText, Sparkles, TrendingUp, DollarSign } from "lucide-react"
+import { BarChart3, ShoppingCart, Package, Users, FileText, Sparkles, TrendingUp } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const modules = [
@@ -53,13 +53,6 @@ const modules = [
     icon: TrendingUp,
     href: "/predicciones",
     brand: 7,
-  },
-  {
-    title: "Finanzas",
-    description: "Análisis monetario: ingresos, costos, ganancias y márgenes",
-    icon: DollarSign,
-    href: "/finanzas",
-    brand: 8,
   },
 ]
 

@@ -43,9 +43,35 @@ const Register: React.FC = () => {
             return
         }
 
-        // Simulación: aquí llamarías a la API para crear el usuario.
-        localStorage.setItem("isAuthenticated", "true")
-        navigate("/dashboard")
+        // Llamada al endpoint de registro en el backend
+        const payload = {
+            username: email,
+            email,
+            password,
+            password2: confirm,
+        }
+
+        fetch('/api/register/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+            .then(async (res) => {
+                const data = await res.json()
+                if (!res.ok) {
+                    // manejar errores devueltos por DRF
+                    const firstError = data?.email || data?.password || data?.username || data || 'Error en el registro.'
+                    setError(Array.isArray(firstError) ? firstError.join(' ') : String(firstError))
+                    return
+                }
+                // Registro exitoso: opcionalmente iniciar sesión automáticamente solicitando token
+                // Aquí iremos a login (o podríamos solicitar token directamente)
+                navigate('/login')
+            })
+            .catch((err) => {
+                console.error('Register error', err)
+                setError('Error de conexión con el servidor.')
+            })
     }
 
     return (
