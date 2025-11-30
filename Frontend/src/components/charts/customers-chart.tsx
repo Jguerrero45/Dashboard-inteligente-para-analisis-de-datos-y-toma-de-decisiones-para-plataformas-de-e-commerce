@@ -4,17 +4,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
+import { useEffect, useState } from "react"
 
 export function CustomersChart() {
-  const data = [
-    { month: "Ene", nuevos: 120, recurrentes: 340 },
-    { month: "Feb", nuevos: 150, recurrentes: 380 },
-    { month: "Mar", nuevos: 180, recurrentes: 420 },
-    { month: "Abr", nuevos: 140, recurrentes: 450 },
-    { month: "May", nuevos: 200, recurrentes: 490 },
-    { month: "Jun", nuevos: 170, recurrentes: 520 },
-    { month: "Jul", nuevos: 220, recurrentes: 560 },
-  ]
+  const [data, setData] = useState<any[]>([])
+
+  useEffect(() => {
+    let mounted = true
+    fetch('/api/metrics/customers-monthly/?months=12')
+      .then((r) => r.json())
+      .then((json) => {
+        if (mounted && Array.isArray(json)) setData(json)
+      })
+      .catch(() => { })
+    return () => { mounted = false }
+  }, [])
 
   const chartConfig = {
     nuevos: {

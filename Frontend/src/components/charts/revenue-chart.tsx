@@ -5,30 +5,32 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 import { useCurrency } from "@/hooks/use-currency"
+import { useEffect, useState } from "react"
 
 export function RevenueChart() {
-  const { currency, exchangeRate } = useCurrency()
+  const { currency, exchangeRate, formatPrice } = useCurrency()
+  const [data, setData] = useState<any[]>([])
 
-  const data = [
-    { category: "Electrónica", revenue: 12000, cost: 8000 },
-    { category: "Ropa", revenue: 8000, cost: 5000 },
-    { category: "Hogar", revenue: 6000, cost: 4000 },
-    { category: "Deportes", revenue: 9000, cost: 6000 },
-    { category: "Libros", revenue: 4000, cost: 2500 },
-  ].map((item) => ({
-    ...item,
-    revenue: currency === "VES" ? item.revenue * exchangeRate : item.revenue,
-    cost: currency === "VES" ? item.cost * exchangeRate : item.cost,
-  }))
+  useEffect(() => {
+    let mounted = true
+    fetch('/api/metrics/revenue-by-category/')
+      .then((r) => r.json())
+      .then((json) => {
+        if (mounted && Array.isArray(json)) setData(json)
+      })
+      .catch(() => { })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  // Mantener valores crudos (USD) y delegar formateo/conversión a `formatPrice`
+  const chartData = data.map((item) => ({ ...item }))
 
   const chartConfig = {
     revenue: {
       label: "Ingresos",
       color: "hsl(var(--chart-2))",
-    },
-    cost: {
-      label: "Costos",
-      color: "hsl(var(--chart-3))",
     },
   }
 
@@ -47,23 +49,20 @@ export function RevenueChart() {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart data={data}>
+          <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="category" className="text-xs" />
             <YAxis className="text-xs" />
             <ChartTooltip content={<ChartTooltipContent />} />
             <Bar dataKey="revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="cost" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ChartContainer>
         {/* Resumen numérico exacto debajo de la gráfica */}
         <div className="mt-4 space-y-2">
-          {data.map((item) => (
+          {chartData.map((item) => (
             <div key={item.category} className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">{item.category}</span>
-              <span className="font-medium">
-                {useCurrency().formatPrice(item.revenue)} / {useCurrency().formatPrice(item.cost)}
-              </span>
+              <span className="font-medium">{formatPrice(item.revenue)}</span>
             </div>
           ))}
         </div>

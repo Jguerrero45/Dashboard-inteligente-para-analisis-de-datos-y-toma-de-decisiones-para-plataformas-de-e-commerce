@@ -17,5 +17,15 @@ urlpatterns = [
     path('', include(router.urls)),
     # Endpoint para registro de usuarios
     path('register/', views.RegisterView.as_view(), name='register'),
-
+    # Endpoints para métricas del dashboard
+    path('metrics/sales-monthly/',
+         views.SalesMonthlyView.as_view(), name='sales-monthly'),
+    path('metrics/revenue-by-category/',
+         views.RevenueByCategoryView.as_view(), name='revenue-by-category'),
+    path('metrics/top-products/',
+         views.TopProductsView.as_view(), name='top-products'),
+    path('metrics/customers-monthly/',
+         views.CustomersMonthlyView.as_view(), name='customers-monthly'),
+    path('metrics/sales-heatmap/',
+         views.SalesHeatmapView.as_view(), name='sales-heatmap'),
 ]

@@ -5,8 +5,7 @@ import { SalesChart } from "@/components/charts/sales-chart"
 import { RevenueChart } from "@/components/charts/revenue-chart"
 import { ProductsChart } from "@/components/charts/products-chart"
 import { CustomersChart } from "@/components/charts/customers-chart"
-import { ConversionChart } from "@/components/charts/conversion-chart"
-import { TrafficChart } from "@/components/charts/traffic-chart"
+// Conversion and Traffic charts removed per request
 import { TopProductsChart } from "@/components/charts/top-products-chart"
 import { SalesHeatmap } from "@/components/charts/sales-heatmap"
 
@@ -37,10 +36,7 @@ export default function Dashboard() {
             <CustomersChart />
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <ConversionChart />
-            <TrafficChart />
-          </div>
+          {/* Conversion and Traffic charts removed */}
 
           <div className="grid gap-6 md:grid-cols-2">
             <TopProductsChart />

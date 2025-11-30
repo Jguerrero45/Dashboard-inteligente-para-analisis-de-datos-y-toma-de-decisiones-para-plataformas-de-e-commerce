@@ -43,8 +43,9 @@ export default function ProductosPage() {
           categoria: p.categoria,
           precio: parseFloat(p.precio) || 0,
           stock: Number(p.stock) || 0,
-          // preferimos el agregado ventas_count si existe, si no fallback al campo `vendidos`
-          vendidos: p.ventas_count != null ? Number(p.ventas_count) : (p.vendidos || 0),
+          // preferimos el agregado `vendidos_total` (suma de cantidades vendidas)
+          // `ventas_count` es solo el número de líneas (rows) y puede diferir de unidades vendidas
+          vendidos: p.vendidos_total != null ? Number(p.vendidos_total) : (p.vendidos || Number(p.ventas_count) || 0),
           ventas_count: p.ventas_count,
           ingreso_total: p.ingreso_total != null ? parseFloat(p.ingreso_total) : 0,
           vendidos_total: p.vendidos_total != null ? Number(p.vendidos_total) : null,
@@ -65,15 +66,15 @@ export default function ProductosPage() {
   // Filtrar productos
   const productosFiltrados = productos.filter((producto) => {
     const matchSearch =
-      producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      producto.id.toLowerCase().includes(searchTerm.toLowerCase())
+      String(producto.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(producto.id).toLowerCase().includes(searchTerm.toLowerCase())
     const matchCategoria = categoriaFilter === "todas" || producto.categoria === categoriaFilter
     const matchEstado = estadoFilter === "todos" || producto.estado === estadoFilter
     return matchSearch && matchCategoria && matchEstado
   })
 
-  // Obtener categorías únicas
-  const categorias = ["todas", ...Array.from(new Set(productosData.map((p) => p.categoria)))]
+  // Obtener categorías únicas (desde los productos cargados)
+  const categorias = ["todas", ...Array.from(new Set(productos.map((p) => p.categoria)))]
 
   // Calcular estadísticas
   const totalProductos = productos.length

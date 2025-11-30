@@ -180,8 +180,13 @@ export default function VentasPage() {
       (Array.isArray(venta.items) && venta.items.some((it: any) => String(it.producto || '').toLowerCase().includes(search)))
     const matchEstado = estadoFilter === "todas" || venta.estado === estadoFilter
     const matchMetodo = metodoFilter === "todos" || venta.metodo === metodoFilter
-    const matchDateFrom = !dateFrom || venta.fecha >= dateFrom
-    const matchDateTo = !dateTo || venta.fecha <= dateTo
+    // Comparar solo la parte fecha (día) para evitar exclusiones por zona horaria
+    const toDateOnly = (d?: Date | null) => (d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() : null)
+    const ventaDateOnly = venta.fecha ? toDateOnly(venta.fecha) : null
+    const fromOnly = toDateOnly(dateFrom)
+    const toOnly = toDateOnly(dateTo)
+    const matchDateFrom = !fromOnly || (ventaDateOnly !== null && ventaDateOnly >= fromOnly)
+    const matchDateTo = !toOnly || (ventaDateOnly !== null && ventaDateOnly <= toOnly)
     return matchSearch && matchEstado && matchMetodo && matchDateFrom && matchDateTo
   })
 

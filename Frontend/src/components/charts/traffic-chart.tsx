@@ -1,70 +1,7 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import ChartInfo from "@/components/ui/chart-info"
-
-const trafficData = [
-  { hora: "00:00", organico: 120, directo: 80, redes: 150, pago: 90 },
-  { hora: "04:00", organico: 80, directo: 50, redes: 100, pago: 60 },
-  { hora: "08:00", organico: 250, directo: 180, redes: 280, pago: 200 },
-  { hora: "12:00", organico: 380, directo: 280, redes: 420, pago: 320 },
-  { hora: "16:00", organico: 420, directo: 320, redes: 480, pago: 380 },
-  { hora: "20:00", organico: 350, directo: 250, redes: 400, pago: 300 },
-]
-
+// Componente removido: Fuentes de Tráfico
+// Se mantiene un stub vacío para evitar errores de importación en caso de referencias residuales.
 export function TrafficChart() {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between w-full">
-          <div>
-            <CardTitle>Fuentes de Tráfico</CardTitle>
-            <CardDescription>Análisis de visitas por canal durante el día</CardDescription>
-          </div>
-          <ChartInfo title="Fuentes de Tráfico">
-            <p className="text-sm">Muestra la distribución de visitas por canal a lo largo del día (orgánico, directo, redes y pago).</p>
-          </ChartInfo>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ChartContainer
-          config={{
-            organico: {
-              label: "Orgánico",
-              color: "hsl(var(--chart-1))",
-            },
-            directo: {
-              label: "Directo",
-              color: "hsl(var(--chart-2))",
-            },
-            redes: {
-              label: "Redes Sociales",
-              color: "hsl(var(--chart-3))",
-            },
-            pago: {
-              label: "Publicidad",
-              color: "hsl(var(--chart-4))",
-            },
-          }}
-          className="h-[300px]"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={trafficData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="hora" />
-              <YAxis />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Legend />
-              <Line type="monotone" dataKey="organico" stroke="hsl(var(--chart-1))" strokeWidth={2} name="Orgánico" />
-              <Line type="monotone" dataKey="directo" stroke="hsl(var(--chart-2))" strokeWidth={2} name="Directo" />
-              <Line type="monotone" dataKey="redes" stroke="hsl(var(--chart-3))" strokeWidth={2} name="Redes Sociales" />
-              <Line type="monotone" dataKey="pago" stroke="hsl(var(--chart-4))" strokeWidth={2} name="Publicidad" />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartContainer>
-      </CardContent>
-    </Card>
-  )
+  return null
 }
