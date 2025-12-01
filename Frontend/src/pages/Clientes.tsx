@@ -290,12 +290,30 @@ export default function ClientesPage() {
                         <CardContent>
                             <div className="flex items-center gap-4">
                                 <label className="text-sm font-medium">Ordenar por:</label>
-                                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="rounded-md border px-3 py-2 text-sm">
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value as any)}
+                                    className="rounded-md px-3 py-2 text-sm"
+                                    style={{
+                                        backgroundColor: 'hsl(var(--color-popover))',
+                                        color: 'hsl(var(--color-popover-foreground))',
+                                        borderColor: 'hsl(var(--color-border))',
+                                    }}
+                                >
                                     <option value="fecha">Fecha</option>
                                     <option value="gasto">Total gastado</option>
                                 </select>
 
-                                <select value={sortDir} onChange={(e) => setSortDir(e.target.value as any)} className="rounded-md border px-3 py-2 text-sm">
+                                <select
+                                    value={sortDir}
+                                    onChange={(e) => setSortDir(e.target.value as any)}
+                                    className="rounded-md px-3 py-2 text-sm"
+                                    style={{
+                                        backgroundColor: 'hsl(var(--color-popover))',
+                                        color: 'hsl(var(--color-popover-foreground))',
+                                        borderColor: 'hsl(var(--color-border))',
+                                    }}
+                                >
                                     <option value="desc">Mayor → Menor</option>
                                     <option value="asc">Menor → Mayor</option>
                                 </select>

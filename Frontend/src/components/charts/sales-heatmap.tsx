@@ -90,7 +90,16 @@ export function SalesHeatmap() {
           {/* Month filter */}
           <div className="flex items-center gap-2">
             <label className="text-sm">Mes</label>
-            <select value={month} onChange={(e) => setMonth(e.target.value)} className="border rounded px-2 py-1">
+            <select
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="rounded px-2 py-1"
+              style={{
+                backgroundColor: 'hsl(var(--color-popover))',
+                color: 'hsl(var(--color-popover-foreground))',
+                borderColor: 'hsl(var(--color-border))',
+              }}
+            >
               {Array.from({ length: 12 }).map((_, i) => {
                 const d = subMonths(new Date(), i)
                 const key = format(d, 'yyyy-MM')

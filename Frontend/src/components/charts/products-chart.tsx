@@ -7,41 +7,45 @@ import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState } from "react"
 
 export function ProductsChart() {
-  const [raw, setRaw] = useState<Array<{ category: string; revenue: number }>>([])
-  const [expanded, setExpanded] = useState(false)
+  const [months, setMonths] = useState<string[]>([])
+  const [series, setSeries] = useState<Array<any>>([])
+  const [data, setData] = useState<any[]>([])
+  const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     let mounted = true
-    fetch('/api/metrics/revenue-by-category/')
+    fetch('/api/metrics/top-categories-monthly/?months=12&limit=6')
       .then((r) => r.json())
       .then((json) => {
         if (!mounted) return
-        if (Array.isArray(json)) {
-          // backend returns { category, revenue, cost } per item
-          const normalized = json.map((it: any) => ({ category: it.category || 'Sin categoría', revenue: Number(it.revenue || 0) }))
-          setRaw(normalized.sort((a, b) => b.revenue - a.revenue))
+        if (json && Array.isArray(json.months) && Array.isArray(json.series)) {
+          setMonths(json.months)
+          setSeries(json.series)
+          // build chart data: { month: label, [category]: units }
+          const chartData = json.months.map((label: string, idx: number) => {
+            const obj: any = { month: label }
+            json.series.forEach((s: any) => {
+              const key = s.category || 'Sin categoría'
+              obj[key] = Number(s.monthly[idx] || 0)
+            })
+            return obj
+          })
+          setData(chartData)
         }
       })
       .catch(() => { })
     return () => { mounted = false }
   }, [])
 
-  const total = raw.reduce((s, r) => s + r.revenue, 0)
-
-  // take top N categories to show as slices, aggregate the rest into 'Otros'
-  const TOP_N = 4
-  const top = raw.slice(0, TOP_N)
-  const others = raw.slice(TOP_N)
-  const othersSum = others.reduce((s, r) => s + r.revenue, 0)
-
   const palette = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"]
 
-  const slices = [
-    ...top.map((t, i) => ({ name: t.category, value: total > 0 ? (t.revenue / total) * 100 : 0, fill: palette[i % palette.length], rawRevenue: t.revenue })),
-  ]
-  if (others.length > 0) {
-    slices.push({ name: 'Otros', value: total > 0 ? (othersSum / total) * 100 : 0, fill: palette[4 % palette.length], rawRevenue: othersSum })
-  }
+  // compute totals and slices from series
+  const totalUnits = series.reduce((s, it) => s + (Number(it.total) || 0), 0)
+  const slices = series.map((s: any, i: number) => ({ name: s.category, value: totalUnits > 0 ? (Number(s.total) / totalUnits) * 100 : 0, fill: palette[i % palette.length], rawUnits: Number(s.total) }))
+
+  const formatNumber = (n: number) => new Intl.NumberFormat('es-ES').format(n)
+
+  const toggleExpanded = (cat: string) => setExpandedCats((p) => ({ ...p, [cat]: !p[cat] }))
 
   const chartConfig = { value: { label: 'Porcentaje' } }
 
@@ -51,10 +55,10 @@ export function ProductsChart() {
         <div className="flex items-start justify-between w-full">
           <div>
             <CardTitle>Distribución de Productos</CardTitle>
-            <CardDescription>Porcentaje de ventas por tipo de producto</CardDescription>
+            <CardDescription>Unidades vendidas por categoría (Top 6)</CardDescription>
           </div>
           <ChartInfo title="Distribución de Productos">
-            <p className="text-sm">Muestra la proporción de ventas por tipo de producto (porcentaje del total). Haz clic en "Otros" para ver el detalle.</p>
+            <p className="text-sm">Muestra las categorías con más unidades vendidas. Haz clic en "..." para ver el detalle mensual por categoría.</p>
           </ChartInfo>
         </div>
       </CardHeader>
@@ -62,10 +66,6 @@ export function ProductsChart() {
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <PieChart>
             <ChartTooltip content={<ChartTooltipContent />} />
-            {/* Custom label: show percentage (2 decimals) and category inside slice */}
-            {/**
-             * Recharts passes label props; we use payload to show `${value.toFixed(2)}% - ${name}`
-             */}
             <Pie
               data={slices}
               dataKey="value"
@@ -74,11 +74,11 @@ export function ProductsChart() {
               cy="50%"
               outerRadius={100}
               label={(props: any) => {
-                const { x, y, midAngle, outerRadius, percent, index, payload } = props
+                const { x, y, percent, payload } = props
                 const pct = (payload && typeof payload.value === 'number') ? payload.value : (percent * 100)
                 const text = `${pct.toFixed(2)}% - ${payload && payload.name ? payload.name : ''}`
                 return (
-                  <text x={x} y={y} fill="#ffffff" fontSize={10} textAnchor="middle" dominantBaseline="central">
+                  <text x={x} y={y} fill={"hsl(var(--color-foreground))"} fontSize={10} textAnchor="middle" dominantBaseline="central">
                     {text}
                   </text>
                 )
@@ -90,37 +90,38 @@ export function ProductsChart() {
             </Pie>
           </PieChart>
         </ChartContainer>
-        {/* Resumen numérico exacto debajo de la gráfica */}
-        <div className="mt-4 space-y-2">
-          {slices.map((entry) => (
-            <div key={entry.name} className="flex items-center justify-between text-sm">
-              <div />
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{entry.value.toFixed(2)}%</span>
-                <span className="text-muted-foreground">{entry.name}</span>
-                {entry.name === 'Otros' && others.length > 0 ? (
-                  <button className="text-xs text-muted-foreground" onClick={() => setExpanded((s) => !s)}>{expanded ? 'ocultar' : '...'}</button>
-                ) : null}
-              </div>
-            </div>
-          ))}
 
-          {expanded && others.length > 0 && (
-            <div className="mt-2 rounded-md border p-2">
-              <div className="text-sm font-medium mb-2">Detalle de Otros</div>
-              <div className="space-y-1 text-sm">
-                {others.map((o) => (
-                  <div key={o.category} className="flex items-center justify-between">
-                    <div />
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{total > 0 ? ((o.revenue / total) * 100).toFixed(2) : '0.00'}%</span>
-                      <span className="text-muted-foreground">{o.category}</span>
-                    </div>
+        {/* Resumen con punto de color, nombre, total y botón '...' */}
+        <div className="mt-4 space-y-2">
+          {series.map((s: any, i: number) => {
+            const key = s.category || `cat-${i}`
+            const color = palette[i % palette.length]
+            const isExpanded = !!expandedCats[key]
+            return (
+              <div key={key} className="space-y-1 border-b pb-2 last:border-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+                    <span className="font-medium">{s.category}</span>
                   </div>
-                ))}
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm">Total: <strong>{formatNumber(Number(s.total || 0))}</strong></span>
+                    <button onClick={() => toggleExpanded(key)} className="text-sm px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">...</button>
+                  </div>
+                </div>
+                {isExpanded && (
+                  <div className="mt-2 text-xs text-muted-foreground grid grid-cols-2 gap-2">
+                    {months.map((m: string, idx: number) => (
+                      <div key={m} className="flex items-center justify-between">
+                        <span className="font-medium">{m}</span>
+                        <span>{formatNumber(Number(s.monthly[idx] || 0))}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )
+          })}
         </div>
       </CardContent>
     </Card>

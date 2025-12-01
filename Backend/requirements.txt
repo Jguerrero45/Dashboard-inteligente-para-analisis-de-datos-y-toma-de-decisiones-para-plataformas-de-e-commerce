@@ -1,8 +1,14 @@
 asgiref==3.10.0
 Django==5.2.7
+django-cors-headers==4.0.0
 djangorestframework==3.16.1
+djangorestframework-simplejwt==5.2.2
+Faker==38.2.0
 psycopg==3.2.12
 psycopg-binary==3.2.12
+PyJWT==2.10.1
+setuptools==80.9.0
 sqlparse==0.5.3
-djangorestframework-simplejwt==5.2.2
-django-cors-headers==4.0.0
+tzdata==2025.2
+wheel==0.45.1
+ 

@@ -48,13 +48,6 @@ const tiposReporte = [
     brand: 3,
   },
   {
-    id: "financiero",
-    nombre: "Reporte Financiero",
-    descripcion: "Ingresos, gastos y análisis de rentabilidad",
-    icon: DollarSign,
-    brand: 7,
-  },
-  {
     id: "general",
     nombre: "Reporte General",
     descripcion: "Resumen ejecutivo de todas las métricas",
@@ -72,14 +65,75 @@ export default function ReportesPage() {
   const [generando, setGenerando] = useState(false)
 
   // Función para generar reporte
-  const generarReporte = () => {
+  const generarReporte = async () => {
     setGenerando(true)
-    // Simular generación de reporte
-    setTimeout(() => {
+    try {
+      if (formato === "pdf") {
+        const params = new URLSearchParams()
+        params.set("months", "12")
+        params.set("top", "5")
+        params.set("tipo", tipoReporte)
+        if (dateFrom) params.set("date_from", dateFrom.toISOString())
+        if (dateTo) params.set("date_to", dateTo.toISOString())
+
+        const res = await fetch(`/api/export/pdf/?${params.toString()}`, {
+          method: "GET",
+          headers: {
+            Accept: "application/pdf",
+          },
+        })
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => "")
+          throw new Error(text || "Error al generar el PDF")
+        }
+
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+
+        // Detectar fallback del servidor (cuando wkhtmltopdf no está instalado)
+        const wkMissing = res.headers.get("X-Wkhtmltopdf-Missing")
+        const contentType = res.headers.get("Content-Type") || res.headers.get("content-type") || ""
+        const contentDisp = res.headers.get("Content-Disposition") || res.headers.get("content-disposition") || ""
+
+        // intentar extraer filename desde Content-Disposition si existe
+        let filename = ''
+        const match = contentDisp.match(/filename\*=UTF-8''([^;\n\r]*)/i) || contentDisp.match(/filename="?([^";\n\r]*)"?/i)
+        if (match && match[1]) {
+          try {
+            filename = decodeURIComponent(match[1])
+          } catch (e) {
+            filename = match[1]
+          }
+        }
+
+        if (!filename) {
+          if (wkMissing || contentType.includes('text/html')) {
+            filename = `reporte_${tipoReporte}.html`
+            alert('wkhtmltopdf no está instalado en el servidor. Se ha descargado el HTML del reporte como fallback. Para un PDF real instala wkhtmltopdf en el servidor.')
+          } else {
+            filename = `reporte_${tipoReporte}.pdf`
+          }
+        }
+
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+      } else {
+        // Para otros formatos (excel/csv) por ahora simulamos — se puede integrar endpoint similar
+        // TODO: integrar endpoints de exportación real para Excel/CSV
+        alert(`Reporte ${tipoReporte} generado en formato ${formato}`)
+      }
+    } catch (err: any) {
+      console.error(err)
+      alert("No se pudo generar el reporte: " + (err.message || err))
+    } finally {
       setGenerando(false)
-      // Aquí iría la lógica real de exportación
-      alert(`Reporte ${tipoReporte} generado en formato ${formato}`)
-    }, 2000)
+    }
   }
 
   // Estadísticas de reportes
@@ -115,24 +169,7 @@ export default function ReportesPage() {
             <p className="text-muted-foreground">Genera y exporta reportes personalizados en múltiples formatos</p>
           </div>
 
-          {/* Estadísticas */}
-          <div className="grid gap-4 md:grid-cols-3">
-            {estadisticas.map((stat, index) => {
-              const Icon = stat.icon
-              return (
-                <Card key={index}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">{stat.titulo}</CardTitle>
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{stat.valor}</div>
-                    <p className="text-xs text-muted-foreground">{stat.descripcion}</p>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
+          {/* Estadísticas (eliminadas a petición) */}
 
           {/* Tipos de Reportes */}
           <Card>

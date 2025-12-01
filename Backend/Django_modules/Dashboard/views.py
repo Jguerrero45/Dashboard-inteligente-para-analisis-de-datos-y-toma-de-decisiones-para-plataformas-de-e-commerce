@@ -243,6 +243,29 @@ class RevenueByCategoryView(APIView):
         return Response(data)
 
 
+class QuantityByCategoryView(APIView):
+    """Devuelve la cantidad total vendida por categoría.
+
+    Response: [{ category: 'Alimentos', units: 123 }, ...]
+    """
+
+    def get(self, request):
+        # Considerar solo items de ventas completadas para consistencia
+        qs = VentaItem.objects.select_related('producto', 'venta').filter(
+            venta__estado=Ventas.ESTADO_COMPLETADA)
+        agg = (
+            qs.values(cat=F('producto__categoria'))
+            .annotate(units=Sum('cantidad'))
+            .order_by('-units')
+        )
+        data = []
+        for item in agg:
+            units = int(item['units'] or 0)
+            data.append({'category': item['cat']
+                        or 'Sin categoría', 'units': units})
+        return Response(data)
+
+
 class TopProductsView(APIView):
     """Devuelve los productos top por ingresos y unidades vendidas.
 
@@ -312,6 +335,149 @@ class CustomersMonthlyView(APIView):
                         'recurrentes': recurrentes})
 
         return Response(data)
+
+
+class TopCustomersMonthlyView(APIView):
+    """Devuelve los top N clientes por gasto total y su gasto por mes.
+
+    Response:
+    {
+      "months": ["Ene", "Feb", ...],
+      "series": [ { "cliente_id": 1, "cliente": "Nombre", "monthly": [..], "total": 123 }, ... ]
+    }
+    """
+
+    def get(self, request):
+        from django.db.models.functions import TruncMonth
+
+        months = int(request.query_params.get('months', 12))
+        limit = int(request.query_params.get('limit', 5))
+        today = timezone.now().date()
+        year = today.year
+        month = today.month
+        months_list = []
+        months_keys = []
+        for i in range(months - 1, -1, -1):
+            m = month - i
+            y = year
+            while m <= 0:
+                m += 12
+                y -= 1
+            months_list.append((y, m))
+
+        for y, m in months_list:
+            months_keys.append(timezone.datetime(
+                year=y, month=m, day=1).date())
+        months_labels = [MONTH_LABELS_ES[d.month - 1] for d in months_keys]
+
+        top_qs = (
+            Ventas.objects.filter(estado=Ventas.ESTADO_COMPLETADA)
+            .values(cliente_pk=F('cliente__id'), cliente_name=F('cliente__nombre'))
+            .annotate(total_spent=Sum('precio_total'))
+            .order_by('-total_spent')
+        )
+        top_list = list(top_qs[:limit])
+        top_ids = [item['cliente_pk'] for item in top_list]
+
+        monthly_qs = (
+            Ventas.objects.filter(
+                estado=Ventas.ESTADO_COMPLETADA, cliente__id__in=top_ids)
+            .annotate(m=TruncMonth('fecha'))
+            .values('cliente__id', 'cliente__nombre', 'm')
+            .annotate(month_spent=Sum('precio_total'))
+            .order_by('cliente__id', 'm')
+        )
+
+        monthly_map = {}
+        for it in monthly_qs:
+            cid = it.get('cliente__id')
+            mdate = it.get('m').date() if it.get('m') is not None else None
+            if cid is None or mdate is None:
+                continue
+            monthly_map.setdefault(cid, {})[mdate] = float(
+                it.get('month_spent') or 0)
+
+        series = []
+        for item in top_list:
+            cid = item.get('cliente_pk')
+            name = item.get('cliente_name') or f'Cliente {cid}'
+            monthly_values = [float(monthly_map.get(
+                cid, {}).get(d, 0.0)) for d in months_keys]
+            total = sum(monthly_values)
+            series.append({'cliente_id': cid, 'cliente': name,
+                          'monthly': monthly_values, 'total': float(total)})
+
+        return Response({'months': months_labels, 'series': series})
+
+
+class TopCategoriesMonthlyView(APIView):
+    """Devuelve los top N categorias por unidades vendidas y su desglose mensual.
+
+    Response:
+    { "months": [...], "series": [{"category": "X", "monthly": [...], "total": 123}, ...] }
+    """
+
+    def get(self, request):
+        from django.db.models.functions import TruncMonth
+
+        months = int(request.query_params.get('months', 12))
+        limit = int(request.query_params.get('limit', 6))
+        today = timezone.now().date()
+        year = today.year
+        month = today.month
+        months_list = []
+        months_keys = []
+        for i in range(months - 1, -1, -1):
+            m = month - i
+            y = year
+            while m <= 0:
+                m += 12
+                y -= 1
+            months_list.append((y, m))
+
+        for y, m in months_list:
+            months_keys.append(timezone.datetime(
+                year=y, month=m, day=1).date())
+        months_labels = [MONTH_LABELS_ES[d.month - 1] for d in months_keys]
+
+        qs = (
+            VentaItem.objects.select_related('venta', 'producto')
+            .filter(venta__estado=Ventas.ESTADO_COMPLETADA)
+            .values(cat=F('producto__categoria'))
+            .annotate(total_units=Sum('cantidad'))
+            .order_by('-total_units')
+        )
+        top_list = list(qs[:limit])
+        top_cats = [item.get('cat') for item in top_list]
+
+        monthly_qs = (
+            VentaItem.objects.select_related('venta', 'producto')
+            .filter(venta__estado=Ventas.ESTADO_COMPLETADA, producto__categoria__in=top_cats)
+            .annotate(m=TruncMonth('venta__fecha'))
+            .values('producto__categoria', 'm')
+            .annotate(month_units=Sum('cantidad'))
+            .order_by('producto__categoria', 'm')
+        )
+
+        monthly_map = {}
+        for it in monthly_qs:
+            cat = it.get('producto__categoria') or 'Sin categoría'
+            mdate = it.get('m').date() if it.get('m') is not None else None
+            if mdate is None:
+                continue
+            monthly_map.setdefault(cat, {})[mdate] = int(
+                it.get('month_units') or 0)
+
+        series = []
+        for item in top_list:
+            cat = item.get('cat') or 'Sin categoría'
+            monthly_values = [int(monthly_map.get(cat, {}).get(d, 0))
+                              for d in months_keys]
+            total = sum(monthly_values)
+            series.append(
+                {'category': cat, 'monthly': monthly_values, 'total': int(total)})
+
+        return Response({'months': months_labels, 'series': series})
 
 
 class SalesHeatmapView(APIView):

@@ -101,7 +101,16 @@ const Register: React.FC = () => {
                             </div>
                             <div>
                                 <label className="text-sm block mb-1">Rol</label>
-                                <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm">
+                                <select
+                                    value={role}
+                                    onChange={(e) => setRole(e.target.value)}
+                                    className="w-full rounded-md px-3 py-2 text-sm"
+                                    style={{
+                                        backgroundColor: 'hsl(var(--color-popover))',
+                                        color: 'hsl(var(--color-popover-foreground))',
+                                        borderColor: 'hsl(var(--color-border))',
+                                    }}
+                                >
                                     <option value="">Selecciona un rol</option>
                                     <option value="owner">Propietario</option>
                                     <option value="manager">Manager</option>

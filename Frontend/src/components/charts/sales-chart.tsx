@@ -87,6 +87,8 @@ export function SalesChart() {
               stroke="hsl(var(--chart-1))"
               fill="url(#salesGradient)"
               strokeWidth={2}
+              dot={{ r: 4, stroke: 'hsl(var(--color-card-foreground))', strokeWidth: 0 }}
+              activeDot={{ r: 6 }}
             />
           </AreaChart>
         </ChartContainer>

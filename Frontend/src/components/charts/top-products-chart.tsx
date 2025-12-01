@@ -48,7 +48,16 @@ export function TopProductsChart() {
             <ChartInfo title="Productos Más Vendidos">
               <p className="text-sm">Lista de los productos que generaron más ingresos en el periodo seleccionado.</p>
             </ChartInfo>
-            <select value={sortBy} onChange={handleSortChange} className="text-sm rounded-md border px-2 py-1">
+            <select
+              value={sortBy}
+              onChange={handleSortChange}
+              className="text-sm rounded-md px-2 py-1"
+              style={{
+                backgroundColor: 'hsl(var(--color-popover))',
+                color: 'hsl(var(--color-popover-foreground))',
+                borderColor: 'hsl(var(--color-border))',
+              }}
+            >
               <option value="units">Unidades</option>
               <option value="revenue">Ingresos</option>
             </select>

@@ -114,19 +114,7 @@ const categoryPerformanceData = [
   { categoria: "Juguetes", actual: 80, predicho: 88 },
 ]
 
-const churnPredictionData = [
-  { segmento: "VIP", riesgo: 12, valor: 45000 },
-  { segmento: "Frecuente", riesgo: 28, valor: 28000 },
-  { segmento: "Ocasional", riesgo: 45, valor: 12000 },
-  { segmento: "Nuevo", riesgo: 35, valor: 8000 },
-]
-
-const priceOptimizationData = [
-  { producto: "Laptop Pro", precioActual: 1200, precioOptimo: 1350, incrementoVentas: 18 },
-  { producto: "Mouse Gamer", precioActual: 45, precioOptimo: 42, incrementoVentas: 25 },
-  { producto: "Teclado RGB", precioActual: 89, precioOptimo: 95, incrementoVentas: 15 },
-  { producto: "Monitor 4K", precioActual: 450, precioOptimo: 425, incrementoVentas: 22 },
-]
+// (Las gráficas de predicción de abandono y optimización de precios fueron eliminadas)
 
 export default function PrediccionesPage() {
   const { formatPrice } = useCurrency()
@@ -470,88 +458,7 @@ export default function PrediccionesPage() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between w-full">
-                  <div>
-                    <CardTitle>Predicción de Abandono de Clientes</CardTitle>
-                    <CardDescription>Riesgo de pérdida por segmento de cliente</CardDescription>
-                  </div>
-                  <ChartInfo title="Predicción de Abandono">
-                    <p className="text-sm">Muestra el riesgo de churn por segmento para priorizar acciones de retención.</p>
-                  </ChartInfo>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer
-                  config={{
-                    riesgo: {
-                      label: "Riesgo de Abandono (%)",
-                      color: "hsl(var(--chart-5))",
-                    },
-                  }}
-                  className="h-[300px]"
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={churnPredictionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="segmento" />
-                      <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="riesgo" fill="hsl(var(--chart-5))" radius={[8, 8, 0, 0]} name="Riesgo %" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-                <div className="mt-4 space-y-2">
-                  {churnPredictionData.map((item) => (
-                    <div key={item.segmento} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{item.segmento}</span>
-                      <span className="font-medium">{formatPrice(item.valor)} en riesgo</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between w-full">
-                  <div>
-                    <CardTitle>Optimización de Precios</CardTitle>
-                    <CardDescription>Recomendaciones de ajuste de precios basadas en IA</CardDescription>
-                  </div>
-                  <ChartInfo title="Optimización de Precios">
-                    <p className="text-sm">Sugerencias de precio óptimo y el impacto estimado en ventas.</p>
-                  </ChartInfo>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {priceOptimizationData.map((item) => (
-                    <div key={item.producto} className="space-y-2 border-b pb-4 last:border-0">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{item.producto}</span>
-                        <Badge variant={item.precioOptimo > item.precioActual ? "default" : "secondary"}>
-                          {item.precioOptimo > item.precioActual ? "Subir" : "Bajar"}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Actual: {formatPrice(item.precioActual)}</span>
-                        <span className="font-medium">Óptimo: {formatPrice(item.precioOptimo)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-chart-1" style={{ width: `${item.incrementoVentas}%` }} />
-                        </div>
-                        <span className="text-xs font-medium">+{item.incrementoVentas}% ventas</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Las gráficas de 'Predicción de Abandono de Clientes' y 'Optimización de Precios' han sido removidas. */}
         </div>
       </main>
 
