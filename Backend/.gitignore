@@ -1,1 +1,11 @@
 env/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+
+# Byte-compiled files in migrations (if any were accidentally committed)
+Backend/Django_modules/**/migrations/__pycache__/
+Backend/Django_modules/**/migrations/*.pyc
