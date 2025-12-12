@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Reporte de Ventas</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    th { background: #f5f5f5; }
+    .meta { margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="meta">
+    <h2>Reporte de Ventas</h2>
+    <div>Generado: {{ now }}</div>
+    <div>Total ventas: {{ sales|length }}</div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>id</th>
+        <th>fecha</th>
+        <th>cliente</th>
+        <th>precio_total</th>
+        <th>metodo_compra</th>
+        <th>estado</th>
+        <th>items_count</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in sales %}
+      <tr>
+        <td>{{ v.id }}</td>
+        <td>{{ v.fecha }}</td>
+        <td>{% if v.cliente %}{{ v.cliente.nombre }} {{ v.cliente.apellido }}{% else %}-{% endif %}</td>
+        <td>{{ v.precio_total }}</td>
+        <td>{{ v.metodo_compra }}</td>
+        <td>{{ v.estado }}</td>
+        <td>{{ v.items.count }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7">No hay ventas en el rango seleccionado</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

@@ -11,4 +11,6 @@ setuptools==80.9.0
 sqlparse==0.5.3
 tzdata==2025.2
 wheel==0.45.1
+pdfkit==1.0.0
+# Note: wkhtmltopdf binary is required on the system for PDF generation
  

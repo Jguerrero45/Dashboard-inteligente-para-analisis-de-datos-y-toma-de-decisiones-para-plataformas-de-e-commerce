@@ -47,19 +47,13 @@ const tiposReporte = [
     icon: Users,
     brand: 3,
   },
-  {
-    id: "general",
-    nombre: "Reporte General",
-    descripcion: "Resumen ejecutivo de todas las métricas",
-    icon: BarChart3,
-    brand: 5,
-  },
 ]
 
 export default function ReportesPage() {
   const { currency } = useCurrency()
   const [tipoReporte, setTipoReporte] = useState("ventas")
-  const [formato, setFormato] = useState("excel")
+  const [formato, setFormato] = useState("csv")
+  const [productCount, setProductCount] = useState<string>("10")
   const [dateFrom, setDateFrom] = useState<Date>()
   const [dateTo, setDateTo] = useState<Date>()
   const [generando, setGenerando] = useState(false)
@@ -68,11 +62,18 @@ export default function ReportesPage() {
   const generarReporte = async () => {
     setGenerando(true)
     try {
+      if (!(tipoReporte === 'productos' || tipoReporte === 'ventas' || tipoReporte === 'clientes')) {
+        alert('Por ahora solo se soporta exportar los reportes de productos y ventas desde esta interfaz.')
+        return
+      }
+
       if (formato === "pdf") {
         const params = new URLSearchParams()
         params.set("months", "12")
         params.set("top", "5")
         params.set("tipo", tipoReporte)
+        // include product count for PDF requests as well
+        params.set('count', productCount || '10')
         if (dateFrom) params.set("date_from", dateFrom.toISOString())
         if (dateTo) params.set("date_to", dateTo.toISOString())
 
@@ -124,9 +125,46 @@ export default function ReportesPage() {
         a.remove()
         window.URL.revokeObjectURL(url)
       } else {
-        // Para otros formatos (excel/csv) por ahora simulamos — se puede integrar endpoint similar
-        // TODO: integrar endpoints de exportación real para Excel/CSV
-        alert(`Reporte ${tipoReporte} generado en formato ${formato}`)
+        // CSV/Excel -> call CSV export endpoint
+        const params = new URLSearchParams()
+        params.set('tipo', tipoReporte)
+        // map excel to csv endpoint as backend returns CSV
+        const count = productCount || '10'
+        params.set('count', count)
+        if (dateFrom) params.set('date_from', dateFrom.toISOString())
+        if (dateTo) params.set('date_to', dateTo.toISOString())
+
+        const res = await fetch(`/api/export/csv/?${params.toString()}`, {
+          method: 'GET',
+          headers: {
+            Accept: 'text/csv',
+          },
+        })
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => '')
+          throw new Error(text || 'Error al generar el CSV')
+        }
+
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+
+        // try to get filename from headers
+        const contentDisp = res.headers.get('Content-Disposition') || res.headers.get('content-disposition') || ''
+        let filename = ''
+        const match = contentDisp.match(/filename\*=UTF-8''([^;\n\r]*)/i) || contentDisp.match(/filename="?([^";\n\r]*)"?/i)
+        if (match && match[1]) {
+          try { filename = decodeURIComponent(match[1]) } catch (e) { filename = match[1] }
+        }
+        if (!filename) filename = `${tipoReporte}_${count}.csv`
+
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
       }
     } catch (err: any) {
       console.error(err)
@@ -152,7 +190,7 @@ export default function ReportesPage() {
     },
     {
       titulo: "Formato Más Usado",
-      valor: "Excel",
+      valor: "CSV",
       descripcion: "85% de exportaciones",
       icon: Download,
     },
@@ -227,7 +265,11 @@ export default function ReportesPage() {
                     <label className="text-sm text-muted-foreground mb-2 block">Fecha Desde</label>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
+                          <Button variant="outline"
+                            className={`w-full justify-start text-left font-normal bg-transparent ${tipoReporte !== 'ventas' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={tipoReporte !== 'ventas'}
+                            title={tipoReporte !== 'ventas' ? 'Fechas deshabilitadas en esta vista' : ''}
+                          >
                           <CalendarIcon className="mr-2 h-4 w-4" />
                           {dateFrom ? format(dateFrom, "PPP", { locale: es }) : "Seleccionar fecha"}
                         </Button>
@@ -240,18 +282,42 @@ export default function ReportesPage() {
                   <div className="flex-1">
                     <label className="text-sm text-muted-foreground mb-2 block">Fecha Hasta</label>
                     <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateTo ? format(dateTo, "PPP", { locale: es }) : "Seleccionar fecha"}
-                        </Button>
-                      </PopoverTrigger>
+                    <PopoverTrigger asChild>
+                            <Button variant="outline"
+                              className={`w-full justify-start text-left font-normal bg-transparent ${tipoReporte !== 'ventas' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              disabled={tipoReporte !== 'ventas'}
+                              title={tipoReporte !== 'ventas' ? 'Fechas deshabilitadas en esta vista' : ''}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateTo ? format(dateTo, "PPP", { locale: es }) : "Seleccionar fecha"}
+                      </Button>
+                    </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
                         <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus />
                       </PopoverContent>
                     </Popover>
                   </div>
                 </div>
+              </div>
+
+              {/* Cantidad de Productos */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Cantidad de Productos</h3>
+                <Select value={productCount} onValueChange={setProductCount} disabled={tipoReporte === 'ventas'}>
+                  <SelectTrigger className={`w-full md:w-[300px] ${tipoReporte === 'ventas' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <SelectValue placeholder="Seleccionar cantidad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">Últimos 10</SelectItem>
+                    <SelectItem value="25">Últimos 25</SelectItem>
+                    <SelectItem value="50">Últimos 50</SelectItem>
+                    <SelectItem value="100">Últimos 100</SelectItem>
+                    <SelectItem value="250">Últimos 250</SelectItem>
+                    <SelectItem value="500">Últimos 500</SelectItem>
+                    <SelectItem value="1000">Últimos 1000</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Formato de Exportación */}
@@ -262,12 +328,6 @@ export default function ReportesPage() {
                     <SelectValue placeholder="Seleccionar formato" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="excel">
-                      <div className="flex items-center gap-2">
-                        <FileSpreadsheet className="h-4 w-4" />
-                        <span>Excel (.xlsx)</span>
-                      </div>
-                    </SelectItem>
                     <SelectItem value="csv">
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4" />
@@ -297,15 +357,19 @@ export default function ReportesPage() {
 
               {/* Botón de Generación */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t">
-                <div className="text-sm text-muted-foreground">
-                  {dateFrom && dateTo
-                    ? `Período: ${format(dateFrom, "dd/MM/yyyy")} - ${format(dateTo, "dd/MM/yyyy")}`
-                    : "Selecciona un rango de fechas para continuar"}
+                <div className="text-sm">
+                  {tipoReporte === 'ventas' ? (
+                    dateFrom && dateTo ? (
+                      `Período: ${format(dateFrom, "dd/MM/yyyy")} - ${format(dateTo, "dd/MM/yyyy")}`
+                    ) : (
+                      <span className="text-red-600 font-bold">Selecciona un rango de fechas para continuar</span>
+                    )
+                  ) : null}
                 </div>
                 <Button
                   size="lg"
                   onClick={generarReporte}
-                  disabled={!dateFrom || !dateTo || generando}
+                  disabled={(tipoReporte === 'ventas' && (!dateFrom || !dateTo)) || generando}
                   className="w-full sm:w-auto"
                 >
                   <Download className="mr-2 h-4 w-4" />
@@ -330,7 +394,7 @@ export default function ReportesPage() {
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />
-                  <p className="text-muted-foreground">Los archivos Excel incluyen múltiples hojas con diferentes vistas de los datos</p>
+                  <p className="text-muted-foreground">Los archivos CSV se importan fácilmente en hojas de cálculo y herramientas de análisis</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />

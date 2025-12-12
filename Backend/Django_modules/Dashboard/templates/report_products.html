@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Reporte de Productos</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    th { background: #f5f5f5; }
+    .meta { margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="meta">
+    <h2>Reporte de Productos</h2>
+    <div>Generado: {{ now }}</div>
+    <div>Total productos: {{ products|length }}</div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        {# Build table headers from first object's fields if possible #}
+        <th>id</th>
+        <th>nombre</th>
+        <th>categoria</th>
+        <th>precio</th>
+        <th>stock</th>
+        <th>vendidos</th>
+        <th>tendencias</th>
+        <th>estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td>{{ p.id }}</td>
+        <td>{{ p.nombre }}</td>
+        <td>{{ p.categoria }}</td>
+        <td>{{ p.precio }}</td>
+        <td>{{ p.stock }}</td>
+        <td>{{ p.vendidos }}</td>
+        <td>{{ p.tendencias }}</td>
+        <td>{{ p.estado }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8">No hay productos</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

@@ -21,6 +21,10 @@ from django.db.models import F
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from rest_framework.views import APIView
+from django.views import View
+from django.http import HttpResponse, JsonResponse
+from django.template.loader import render_to_string
+import io, csv, datetime
 
 MONTH_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May",
                    "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -582,6 +586,212 @@ class SalesHeatmapView(APIView):
                         for c in range(7)] for r in range(weeks)]
 
         return Response({"heatmap": heatmap, "day_numbers": day_nums, "revenue_raw": revenue_matrix, "month": f"{year:04d}-{mon:02d}"})
+
+
+class ExportMixin:
+    """Helper mixin to fetch products queryset based on request params."""
+
+    ALLOWED_COUNTS = {10, 25, 50, 100, 250, 500, 1000}
+
+    def get_products_qs(self, request):
+        from .models import Productos
+        qs = Productos.objects.all().order_by('-id')
+        # Django `View` provides `request.GET`; DRF `Request` exposes `query_params`.
+        params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
+        # Accept multiple possible parameter names and provide a sensible default
+        raw = (params.get('count') or params.get('limit') or params.get('n') or '').strip()
+
+        # Default behaviour: last 10
+        if raw == '' or raw.lower() == '10':
+            return qs[:10]
+
+        if raw.lower() == 'all':
+            return qs
+
+        try:
+            n = int(raw)
+        except Exception:
+            return qs[:10]
+
+        if n in self.ALLOWED_COUNTS:
+            return qs[:n]
+
+        # If an unexpected but valid positive integer was supplied, return that many.
+        if n > 0:
+            return qs[:n]
+
+        return qs[:10]
+
+    def get_clients_qs(self, request):
+        from .models import Clientes
+        qs = Clientes.objects.all().order_by('-id')
+        params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
+        raw = (params.get('count') or params.get('limit') or params.get('n') or '').strip()
+
+        if raw == '' or raw.lower() == '10':
+            return qs[:10]
+        if raw.lower() == 'all':
+            return qs
+        try:
+            n = int(raw)
+        except Exception:
+            return qs[:10]
+        if n in self.ALLOWED_COUNTS:
+            return qs[:n]
+        if n > 0:
+            return qs[:n]
+        return qs[:10]
+
+
+class ExportCSVView(View, ExportMixin):
+    # Django View to avoid DRF content-negotiation rejecting CSV Accept header
+    def get(self, request):
+        # currently only supports tipo=productos
+        params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
+        tipo = params.get('tipo', 'productos')
+
+        # choose entity
+        if tipo == 'productos':
+            qs = self.get_products_qs(request)
+            from .models import Productos
+            fields = [f.name for f in Productos._meta.fields]
+            entity_label = 'productos'
+        elif tipo == 'clientes':
+            qs = self.get_clients_qs(request)
+            from .models import Clientes
+            fields = [f.name for f in Clientes._meta.fields]
+            entity_label = 'clientes'
+        elif tipo == 'ventas':
+            # for ventas we expect date_from/date_to params
+            params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
+            from django.utils.dateparse import parse_datetime, parse_date
+            df = params.get('date_from')
+            dt = params.get('date_to')
+            if not df or not dt:
+                return JsonResponse({'detail': 'date_from and date_to are required for ventas'}, status=status.HTTP_400_BAD_REQUEST)
+
+            start = parse_datetime(df) or parse_date(df)
+            end = parse_datetime(dt) or parse_date(dt)
+            if start is None or end is None:
+                return JsonResponse({'detail': 'Invalid date_from/date_to format. Use ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # If parsed dates are date objects, convert to datetimes at boundaries
+            import datetime as _dt
+            if isinstance(start, _dt.date) and not isinstance(start, _dt.datetime):
+                start = _dt.datetime.combine(start, _dt.time.min)
+            if isinstance(end, _dt.date) and not isinstance(end, _dt.datetime):
+                end = _dt.datetime.combine(end, _dt.time.max)
+
+            from .models import Ventas
+            qs = Ventas.objects.select_related('cliente').prefetch_related('items__producto').filter(fecha__gte=start, fecha__lte=end).order_by('-fecha')
+            fields = ['id', 'fecha', 'cliente_id', 'cliente_nombre', 'precio_total', 'metodo_compra', 'estado', 'items_count']
+            entity_label = 'ventas'
+        else:
+            return JsonResponse({'detail': 'tipo no soportado'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # prepare CSV
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+
+        # header: field names
+        writer.writerow(fields)
+
+        for obj in qs:
+            row = []
+            for fname in fields:
+                # support computed ventas fields
+                if entity_label == 'ventas':
+                    if fname == 'cliente_id':
+                        val = getattr(obj, 'cliente_id', '')
+                    elif fname == 'cliente_nombre':
+                        cli = getattr(obj, 'cliente', None)
+                        val = f"{getattr(cli, 'nombre', '')} {getattr(cli, 'apellido', '')}" if cli else ''
+                    elif fname == 'items_count':
+                        try:
+                            val = obj.items.count()
+                        except Exception:
+                            val = ''
+                    else:
+                        val = getattr(obj, fname, '')
+                else:
+                    val = getattr(obj, fname, '')
+
+                # format datetimes/decimals
+                if isinstance(val, (datetime.date, datetime.datetime)):
+                    val = val.isoformat()
+                row.append(str(val) if val is not None else '')
+            writer.writerow(row)
+
+        resp = HttpResponse(buffer.getvalue(), content_type='text/csv')
+        now = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        resp['Content-Disposition'] = f'attachment; filename="{entity_label}_{now}.csv"'
+        return resp
+
+
+class ExportPDFView(View, ExportMixin):
+    # Django View to avoid DRF content-negotiation rejecting PDF Accept header
+    def get(self, request):
+        params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
+        tipo = params.get('tipo', 'productos')
+
+        # choose entity
+        if tipo == 'productos':
+            qs = self.get_products_qs(request)
+            context = {'products': qs, 'now': datetime.datetime.utcnow()}
+            template_name = 'report_products.html'
+            entity_label = 'productos'
+        elif tipo == 'clientes':
+            qs = self.get_clients_qs(request)
+            context = {'clients': qs, 'now': datetime.datetime.utcnow()}
+            template_name = 'report_clients.html'
+            entity_label = 'clientes'
+        
+        elif tipo == 'ventas':
+            params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
+            from django.utils.dateparse import parse_datetime, parse_date
+            df = params.get('date_from')
+            dt = params.get('date_to')
+            if not df or not dt:
+                return JsonResponse({'detail': 'date_from and date_to are required for ventas'}, status=status.HTTP_400_BAD_REQUEST)
+
+            start = parse_datetime(df) or parse_date(df)
+            end = parse_datetime(dt) or parse_date(dt)
+            if start is None or end is None:
+                return JsonResponse({'detail': 'Invalid date_from/date_to format. Use ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            import datetime as _dt
+            if isinstance(start, _dt.date) and not isinstance(start, _dt.datetime):
+                start = _dt.datetime.combine(start, _dt.time.min)
+            if isinstance(end, _dt.date) and not isinstance(end, _dt.datetime):
+                end = _dt.datetime.combine(end, _dt.time.max)
+
+            from .models import Ventas
+            qs = Ventas.objects.select_related('cliente').prefetch_related('items__producto').filter(fecha__gte=start, fecha__lte=end).order_by('-fecha')
+            context = {'sales': qs, 'now': datetime.datetime.utcnow()}
+            template_name = 'report_sales.html'
+            entity_label = 'ventas'
+        else:
+            return JsonResponse({'detail': 'tipo no soportado'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # render HTML first
+        html = render_to_string(template_name, context)
+
+        # try to generate PDF with pdfkit (wkhtmltopdf) if available
+        try:
+            import pdfkit
+            options = {
+                'enable-local-file-access': None,
+            }
+            pdf = pdfkit.from_string(html, False, options=options)
+            resp = HttpResponse(pdf, content_type='application/pdf')
+            now = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            resp['Content-Disposition'] = f'attachment; filename="{entity_label}_{now}.pdf"'
+            return resp
+        except Exception:
+            # fallback: return HTML and signal missing wkhtmltopdf
+            resp = HttpResponse(html, content_type='text/html')
+            resp['X-Wkhtmltopdf-Missing'] = '1'
+            return resp
 
 
 # DebugTotalsView removed per request
