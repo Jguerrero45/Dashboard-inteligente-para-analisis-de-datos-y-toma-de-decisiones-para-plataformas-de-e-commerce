@@ -17,9 +17,9 @@ urlpatterns = [
     path('', include(router.urls)),
     # Endpoint para registro de usuarios
     path('register/', views.RegisterView.as_view(), name='register'),
-     # Export endpoints for reports
-     path('export/pdf/', views.ExportPDFView.as_view(), name='export-pdf'),
-     path('export/csv/', views.ExportCSVView.as_view(), name='export-csv'),
+    # Export endpoints for reports
+    path('export/pdf/', views.ExportPDFView.as_view(), name='export-pdf'),
+    path('export/csv/', views.ExportCSVView.as_view(), name='export-csv'),
     # Endpoints para métricas del dashboard
     path('metrics/sales-monthly/',
          views.SalesMonthlyView.as_view(), name='sales-monthly'),
@@ -37,4 +37,7 @@ urlpatterns = [
          views.TopCategoriesMonthlyView.as_view(), name='top-categories-monthly'),
     path('metrics/sales-heatmap/',
          views.SalesHeatmapView.as_view(), name='sales-heatmap'),
+    # Recomendaciones IA (Gemini)
+    path('ai/recommendations/',
+         views.AIRecommendationsView.as_view(), name='ai-recommendations'),
 ]

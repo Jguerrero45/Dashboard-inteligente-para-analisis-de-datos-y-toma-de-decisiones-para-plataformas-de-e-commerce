@@ -1,59 +1,37 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Sparkles, TrendingUp, AlertCircle, Target, RefreshCw } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
-export function AIRecommendations({ recommendations: propRecommendations, onRefresh }: { recommendations?: any[]; onRefresh?: () => Promise<void> }) {
+export function AIRecommendations({ recommendations: propRecommendations, onRefresh, onDelete }: { recommendations?: any[]; onRefresh?: () => Promise<void>; onDelete?: (id: number) => Promise<void> }) {
   const today = new Date().toISOString().slice(0, 10)
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-
-  // Fallback initial recommendations (used only if parent doesn't provide data)
-  const initial = [
-    {
-      type: "pricing",
-      priority: "high",
-      title: "Ajuste de Precio Recomendado",
-      description:
-        'El producto "Laptop Gaming X1" tiene alta demanda pero bajo margen. Considera aumentar el precio en 8% para optimizar rentabilidad.',
-      impact: "+$2,340 mensuales estimados",
-      icon: TrendingUp,
-      generatedAt: `${today}T10:00:00Z`,
-    },
-    {
-      type: "marketing",
-      priority: "medium",
-      title: "Campaña Publicitaria Sugerida",
-      description:
-        'Los "Auriculares Bluetooth Pro" tienen ventas decrecientes (-15%). Lanza una campaña promocional para recuperar tracción.',
-      impact: "Recuperación estimada: 120 unidades/mes",
-      icon: Target,
-      generatedAt: `${yesterday}T12:00:00Z`,
-    },
-    {
-      type: "inventory",
-      priority: "high",
-      title: "Alerta de Inventario",
-      description:
-        'El "Mouse Inalámbrico Elite" está cerca de agotarse (23 unidades). Aumenta el stock antes del fin de semana.',
-      impact: "Evita pérdida de $1,850 en ventas",
-      icon: AlertCircle,
-      generatedAt: `${today}T08:30:00Z`,
-    },
-  ]
 
   const [filterDate, setFilterDate] = useState(today)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [page, setPage] = useState(0)
+  const pageSize = 2
 
-  // Use recommendations passed from parent when available, otherwise fallback to initial
-  const recommendations = propRecommendations ?? initial
+  // Use recommendations passed from parent; default to empty list
+  const recommendations = propRecommendations ?? []
 
   const filtered = useMemo(() => {
-    return recommendations.filter((r) => r.generatedAt.slice(0, 10) === filterDate)
+    return recommendations.filter((r) => (r.generatedAt || "").slice(0, 10) === filterDate)
   }, [recommendations, filterDate])
+
+  // Resetear a la primera página cuando cambie el filtro o el listado
+  useEffect(() => {
+    setPage(0)
+  }, [filterDate, recommendations])
+
+  // Paginación: 2 por página. Página 0 = primeras 2; posteriores = siguientes sin las 2 primeras.
+  const totalPages = Math.ceil(filtered.length / pageSize)
+  const safePage = Math.min(Math.max(page, 0), Math.max(totalPages - 1, 0))
+  const start = safePage * pageSize
+  const currentItems = filtered.slice(start, start + pageSize)
 
   const priorityStyles: Record<string, any> = {
     high: {
@@ -107,28 +85,71 @@ export function AIRecommendations({ recommendations: propRecommendations, onRefr
         {filtered.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground">No hay recomendaciones para la fecha seleccionada.</div>
         ) : (
-          filtered.map((rec, index) => {
-            const Icon = rec.icon ?? Sparkles
-            return (
-              <div key={index} className="flex gap-4 p-4 rounded-lg border bg-card">
-                <div className="flex-shrink-0">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <Icon className="h-5 w-5 text-primary" />
-                  </div>
-                </div>
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <h4 className="font-semibold leading-tight">{rec.title}</h4>
-                    <Badge variant="outline" style={priorityStyles[rec.priority]}>
-                      {rec.priority === "high" ? "Alta" : rec.priority === "medium" ? "Media" : "Baja"}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{rec.description}</p>
-                  <p className="text-sm font-medium text-primary">{rec.impact}</p>
-                </div>
+          <>
+            {/* Controles de paginación */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(p - 1, 0))}
+                  disabled={safePage === 0}
+                >
+                  ◀
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {safePage + 1} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(p + 1, Math.max(totalPages - 1, 0)))}
+                  disabled={safePage >= totalPages - 1}
+                >
+                  ▶
+                </Button>
               </div>
-            )
-          })
+            )}
+
+            {/* Página actual (2 ítems por página) */}
+            {currentItems.map((rec, index) => {
+              const Icon = rec.icon ?? Sparkles
+              return (
+                <div key={index} className="flex gap-4 p-4 rounded-lg border bg-card">
+                  <div className="flex-shrink-0">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <Icon className="h-5 w-5 text-primary" />
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-semibold leading-tight">{rec.title}</h4>
+                      <Badge variant="outline" style={priorityStyles[rec.priority]}>
+                        {rec.priority === "high" ? "Alta" : rec.priority === "medium" ? "Media" : "Baja"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{rec.description}</p>
+                    <p className="text-sm font-medium text-primary">{rec.impact}</p>
+                    {onDelete && typeof rec.id === 'number' ? (
+                      <div className="pt-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            const ok = window.confirm("¿Eliminar esta recomendación? Esta acción no se puede deshacer.")
+                            if (!ok) return
+                            onDelete(rec.id)
+                          }}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              )
+            })}
+          </>
         )}
       </CardContent>
     </Card>

@@ -24,7 +24,10 @@ from rest_framework.views import APIView
 from django.views import View
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
-import io, csv, datetime
+import io
+import csv
+import datetime
+from .services.gemini_client import generate_ai_recommendation, GeminiError
 
 MONTH_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May",
                    "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -94,6 +97,40 @@ class RecomendacionIA_ViewSet(viewsets.ModelViewSet):
     queryset = RecomendacionIA.objects.all()
     serializer_class = RecomendacionIA_Serializers
 
+    def create(self, request, *args, **kwargs):
+        """Permite autocompletar el producto desde metadatos/card cuando no viene explícito."""
+        data = request.data.copy() if request.data else {}
+
+        # Si falta producto, intentar extraerlo de metadatos.card.product_id o metadatos.debug.best_option.product_focus.id
+        if not data.get('producto'):
+            meta = data.get('metadatos') or {}
+            try:
+                if isinstance(meta, str):
+                    import json
+                    meta = json.loads(meta)
+            except Exception:
+                meta = {}
+
+            product_id = None
+            try:
+                product_id = meta.get('card', {}).get('product_id')
+            except Exception:
+                product_id = None
+            if not product_id:
+                try:
+                    product_id = meta.get('debug', {}).get(
+                        'best_option', {}).get('product_focus', {}).get('id')
+                except Exception:
+                    product_id = None
+            if product_id:
+                data['producto'] = product_id
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 
 class VentaItem_ViewSet(viewsets.ModelViewSet):
     queryset = VentaItem.objects.all()
@@ -105,6 +142,52 @@ class RegisterView(generics.CreateAPIView):
     queryset = get_user_model().objects.all()
     permission_classes = [permissions.AllowAny]
     serializer_class = UserRegistrationSerializer
+
+
+class AIRecommendationsView(APIView):
+    """Genera recomendaciones de marketing y stock usando Gemini.
+
+    Request (POST):
+    {
+      "product_ids": [1,2],  # opcional
+      "category": "Electrónica",  # opcional
+      "limit": 3  # opcional, max productos a considerar
+    }
+    """
+
+    def post(self, request):
+        data = request.data or {}
+        product_ids = data.get('product_ids') or data.get('productos')
+        if isinstance(product_ids, str):
+            try:
+                product_ids = [int(pid.strip())
+                               for pid in product_ids.split(',') if pid.strip()]
+            except Exception:
+                product_ids = None
+
+        category = data.get('category') or data.get('categoria')
+        try:
+            limit = int(data.get('limit', 3))
+        except Exception:
+            limit = 3
+        limit = max(1, min(limit, 5))
+        if product_ids:
+            try:
+                limit = max(1, min(len(product_ids), 5))
+            except Exception:
+                pass
+
+        try:
+            payload = generate_ai_recommendation(
+                product_ids=product_ids,
+                category=category,
+                limit=limit,
+            )
+            return Response(payload)
+        except GeminiError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as exc:  # noqa: BLE001
+            return Response({'detail': f'Error inesperado: {exc}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class Tasa_ViewSet(viewsets.ViewSet):
@@ -597,9 +680,11 @@ class ExportMixin:
         from .models import Productos
         qs = Productos.objects.all().order_by('-id')
         # Django `View` provides `request.GET`; DRF `Request` exposes `query_params`.
-        params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
+        params = getattr(request, 'GET', None) or getattr(
+            request, 'query_params', None) or {}
         # Accept multiple possible parameter names and provide a sensible default
-        raw = (params.get('count') or params.get('limit') or params.get('n') or '').strip()
+        raw = (params.get('count') or params.get(
+            'limit') or params.get('n') or '').strip()
 
         # Default behaviour: last 10
         if raw == '' or raw.lower() == '10':
@@ -625,8 +710,10 @@ class ExportMixin:
     def get_clients_qs(self, request):
         from .models import Clientes
         qs = Clientes.objects.all().order_by('-id')
-        params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
-        raw = (params.get('count') or params.get('limit') or params.get('n') or '').strip()
+        params = getattr(request, 'GET', None) or getattr(
+            request, 'query_params', None) or {}
+        raw = (params.get('count') or params.get(
+            'limit') or params.get('n') or '').strip()
 
         if raw == '' or raw.lower() == '10':
             return qs[:10]
@@ -647,7 +734,8 @@ class ExportCSVView(View, ExportMixin):
     # Django View to avoid DRF content-negotiation rejecting CSV Accept header
     def get(self, request):
         # currently only supports tipo=productos
-        params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
+        params = getattr(request, 'GET', None) or getattr(
+            request, 'query_params', None) or {}
         tipo = params.get('tipo', 'productos')
 
         # choose entity
@@ -663,7 +751,8 @@ class ExportCSVView(View, ExportMixin):
             entity_label = 'clientes'
         elif tipo == 'ventas':
             # for ventas we expect date_from/date_to params
-            params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
+            params = getattr(request, 'GET', None) or getattr(
+                request, 'query_params', None) or {}
             from django.utils.dateparse import parse_datetime, parse_date
             df = params.get('date_from')
             dt = params.get('date_to')
@@ -683,8 +772,10 @@ class ExportCSVView(View, ExportMixin):
                 end = _dt.datetime.combine(end, _dt.time.max)
 
             from .models import Ventas
-            qs = Ventas.objects.select_related('cliente').prefetch_related('items__producto').filter(fecha__gte=start, fecha__lte=end).order_by('-fecha')
-            fields = ['id', 'fecha', 'cliente_id', 'cliente_nombre', 'precio_total', 'metodo_compra', 'estado', 'items_count']
+            qs = Ventas.objects.select_related('cliente').prefetch_related(
+                'items__producto').filter(fecha__gte=start, fecha__lte=end).order_by('-fecha')
+            fields = ['id', 'fecha', 'cliente_id', 'cliente_nombre',
+                      'precio_total', 'metodo_compra', 'estado', 'items_count']
             entity_label = 'ventas'
         else:
             return JsonResponse({'detail': 'tipo no soportado'}, status=status.HTTP_400_BAD_REQUEST)
@@ -731,7 +822,8 @@ class ExportCSVView(View, ExportMixin):
 class ExportPDFView(View, ExportMixin):
     # Django View to avoid DRF content-negotiation rejecting PDF Accept header
     def get(self, request):
-        params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
+        params = getattr(request, 'GET', None) or getattr(
+            request, 'query_params', None) or {}
         tipo = params.get('tipo', 'productos')
 
         # choose entity
@@ -745,9 +837,10 @@ class ExportPDFView(View, ExportMixin):
             context = {'clients': qs, 'now': datetime.datetime.utcnow()}
             template_name = 'report_clients.html'
             entity_label = 'clientes'
-        
+
         elif tipo == 'ventas':
-            params = getattr(request, 'GET', None) or getattr(request, 'query_params', None) or {}
+            params = getattr(request, 'GET', None) or getattr(
+                request, 'query_params', None) or {}
             from django.utils.dateparse import parse_datetime, parse_date
             df = params.get('date_from')
             dt = params.get('date_to')
@@ -766,7 +859,8 @@ class ExportPDFView(View, ExportMixin):
                 end = _dt.datetime.combine(end, _dt.time.max)
 
             from .models import Ventas
-            qs = Ventas.objects.select_related('cliente').prefetch_related('items__producto').filter(fecha__gte=start, fecha__lte=end).order_by('-fecha')
+            qs = Ventas.objects.select_related('cliente').prefetch_related(
+                'items__producto').filter(fecha__gte=start, fecha__lte=end).order_by('-fecha')
             context = {'sales': qs, 'now': datetime.datetime.utcnow()}
             template_name = 'report_sales.html'
             entity_label = 'ventas'

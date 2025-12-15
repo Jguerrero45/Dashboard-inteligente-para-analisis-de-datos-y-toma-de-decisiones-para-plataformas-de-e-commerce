@@ -1,6 +1,4 @@
-"use client"
-
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -8,100 +6,186 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectTrigger, SelectContent, SelectItem } from "@/components/ui/select"
 import { AIRecommendations } from "@/components/ai-recommendations"
 
+type Product = { id: number; nombre: string; categoria: string }
+
 export default function IaRecomendacionesPage() {
+    const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api"
     const [response, setResponse] = useState("")
     const [loading, setLoading] = useState(false)
+    const [fetchingProducts, setFetchingProducts] = useState(false)
+    const [products, setProducts] = useState<Product[]>([])
+    const [lastAI, setLastAI] = useState<any | null>(null)
     // Lista de recomendaciones mostradas en el panel lateral.
     // Nota: estas recomendaciones deben persistirse en la base de datos cuando exista el endpoint.
     // Guardamos localmente en estado y enviamos comentario TODO donde se necesite persistencia.
     const today = new Date().toISOString().slice(0, 10)
-    const [recommendations, setRecommendations] = useState<any[]>([
-        { type: 'pricing', priority: 'high', title: 'Ajuste de Precio Recomendado', description: 'El producto "Laptop Gaming X1" tiene alta demanda pero bajo margen. Considera aumentar el precio en 8% para optimizar rentabilidad.', impact: '+$2,340 mensuales estimados', icon: undefined, generatedAt: `${today}T10:00:00Z` },
-    ])
+    const [recommendations, setRecommendations] = useState<any[]>([])
 
-    // Mock de categorías y productos (reemplazar por llamada a backend si existe)
-    const categories = useMemo(() => [
-        { id: 'electronics', name: 'Electrónica' },
-        { id: 'fashion', name: 'Moda' },
-        { id: 'home', name: 'Hogar' },
-    ], [])
+    // Fetch productos reales desde backend
+    useEffect(() => {
+        let mounted = true
+        const load = async () => {
+            try {
+                setFetchingProducts(true)
+                const res = await fetch(`${API_BASE}/Productos/`)
+                if (!res.ok) throw new Error(`Error ${res.status}`)
+                const data = await res.json()
+                if (mounted && Array.isArray(data)) {
+                    const mapped: Product[] = data.map((p: any) => ({
+                        id: Number(p.id),
+                        nombre: p.nombre ?? String(p.id),
+                        categoria: p.categoria ?? "Sin categoría",
+                    }))
+                    setProducts(mapped)
+                }
+            } catch (e) {
+                // mantener silencio en UI; dejamos fallback sin productos
+            } finally {
+                if (mounted) setFetchingProducts(false)
+            }
+        }
+        load()
+        return () => { mounted = false }
+    }, [API_BASE])
 
-    const productsByCategory: Record<string, { id: string; name: string }[]> = {
-        electronics: [
-            { id: 'laptop_x1', name: 'Laptop Gaming X1' },
-            { id: 'headphones_pro', name: 'Auriculares Bluetooth Pro' },
-            { id: 'mouse_elite', name: 'Mouse Inalámbrico Elite' },
-        ],
-        fashion: [
-            { id: 'tshirt_basic', name: 'Camiseta Básica' },
-            { id: 'sneakers_run', name: 'Zapatillas Run' },
-        ],
-        home: [
-            { id: 'blender_500', name: 'Licuadora 500W' },
-            { id: 'coffee_maker', name: 'Cafetera Express' },
-        ],
-    }
+    const categories = useMemo(() => {
+        const uniq = Array.from(new Set(products.map((p) => p.categoria || "Sin categoría")))
+        const base = uniq.map((c) => ({ id: c, name: c }))
+        return [{ id: "ALL_CAT", name: "-- Todas --" }, ...base]
+    }, [products])
 
-    const [selectedCategory, setSelectedCategory] = useState<string>(categories[0].id)
+    const productsByCategory = useMemo(() => {
+        const map: Record<string, { id: string; name: string }[]> = {}
+        products.forEach((p) => {
+            const key = p.categoria || "Sin categoría"
+            if (!map[key]) map[key] = []
+            map[key].push({ id: String(p.id), name: p.nombre })
+        })
+        return map
+    }, [products])
+
+    const [selectedCategory, setSelectedCategory] = useState<string>("ALL_CAT")
     const [selectedProduct, setSelectedProduct] = useState<string | "">("")
 
-    // Nota: reemplazar esta función con llamada real a backend/IA.
-    // Por ahora devuelve una respuesta corta determinística derivada del prompt
-    // Genera una respuesta breve basada en la categoría y producto seleccionados.
-    async function generateAutomaticRecommendations() {
+    // si llegan categorías reales, escoger la primera por defecto
+    useEffect(() => {
+        if (!selectedCategory && categories.length > 0) setSelectedCategory("ALL_CAT")
+    }, [categories, selectedCategory])
+
+    // Solicita recomendaciones al backend (Gemini). Si falla con filtros, reintenta sin filtros.
+    async function requestRecommendation(useFilters: boolean, alreadyRetried = false) {
         setLoading(true)
-        await new Promise((r) => setTimeout(r, 700))
+        const payload: Record<string, any> = { limit: 3 }
 
-        const cat = categories.find((c) => c.id === selectedCategory)
-        const products = productsByCategory[selectedCategory] ?? []
-        const prod = products.find((p) => p.id === selectedProduct)
+        if (useFilters) {
+            const cat = categories.find((c) => c.id === selectedCategory)
+            if (cat?.id && cat.id !== "ALL_CAT") payload.category = cat.id
+            if (selectedProduct && !Number.isNaN(Number(selectedProduct))) {
+                payload.product_ids = [Number(selectedProduct)]
+            }
+        }
 
-        const base = `Recomendaciones automáticas para ${cat?.name}${prod ? ` - ${prod.name}` : ''}`
-        const details = prod
-            ? `Analizar precio, inventario y rendimiento de ${prod.name}. Sugerir ajustes de precio y campañas segmentadas.`
-            : `Analizar los productos en la categoría ${cat?.name}, identificar oportunidades de promoción y ajuste de inventario.`
+        try {
+            const res = await fetch(`${API_BASE}/ai/recommendations/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            })
 
-        const generated = `${base}: ${details}`
-        setResponse(generated)
-        setLoading(false)
+            if (!res.ok) {
+                if (useFilters && !alreadyRetried) {
+                    // si falla con filtros, reintenta sin filtros
+                    return await requestRecommendation(false, true)
+                }
+                const errText = await res.text()
+                throw new Error(errText || `Error ${res.status}`)
+            }
+
+            const data = await res.json()
+            const summary: string = data?.summary || ""
+            setResponse(summary || "No se recibió respuesta")
+            setLastAI(data)
+        } catch (error: any) {
+            setResponse(error?.message ? `Error: ${error.message}` : 'Error al generar recomendaciones')
+        } finally {
+            setLoading(false)
+        }
     }
 
-    // Generación explícita usando los filtros actuales (botón 'Generar (por filtros)')
+    async function generateAutomaticRecommendations() {
+        await requestRecommendation(true)
+    }
+
     async function generateByFilters() {
-        setLoading(true)
-        await new Promise((r) => setTimeout(r, 700))
-
-        const cat = categories.find((c) => c.id === selectedCategory)
-        const products = productsByCategory[selectedCategory] ?? []
-        const prod = products.find((p) => p.id === selectedProduct)
-
-        const base = `Generación por filtros para ${cat?.name}${prod ? ` - ${prod.name}` : ''}`
-        const details = prod
-            ? `Revisar los datos de ${prod.name} y proponer ajustes de precio/inventario y campañas específicas.`
-            : `Revisar los productos en la categoría ${cat?.name} y proponer promociones y rotación de inventario.`
-
-        const generated = `${base}: ${details}`
-        setResponse(generated)
-        setLoading(false)
+        await requestRecommendation(true)
     }
 
     // Guarda la respuesta actual en el panel de Recomendaciones Inteligentes (no obligatorio generar antes)
-    function saveResponseToRecommendations() {
+    async function saveResponseToRecommendations() {
         if (!response || response.trim() === "") return
 
-        const newRec = {
-            type: 'custom',
-            priority: 'low',
-            title: response.slice(0, 60),
-            description: response,
-            impact: '',
-            icon: undefined,
-            generatedAt: new Date().toISOString(),
+        // Determinar producto a asociar: seleccionado o foco de IA
+        let productoId: number | null = null
+        if (selectedProduct && !Number.isNaN(Number(selectedProduct))) {
+            productoId = Number(selectedProduct)
+        } else if (lastAI?.card?.product_id) {
+            productoId = Number(lastAI.card.product_id)
+        } else if (lastAI?.debug?.best_option?.product_focus?.id) {
+            productoId = Number(lastAI.debug.best_option.product_focus.id)
         }
 
-        setRecommendations((prev) => [newRec, ...prev])
+        // Si no tenemos producto, evitamos enviar al backend (el endpoint lo requiere)
+        if (!productoId) {
+            setResponse("Selecciona un producto o genera una recomendación con producto antes de guardar.")
+            return
+        }
 
-        // TODO: Persistir en backend: POST /api/recommendations con newRec
+        // Construir payload para backend
+        const productName = lastAI?.card?.product_name || lastAI?.debug?.best_option?.product_focus?.nombre || ""
+        const productId = productoId ? `ID ${productoId}` : ""
+        const productLabel = lastAI?.card?.product_label || (productName || productId ? `Producto: ${productName}${productName && productId ? " · " : ""}${productId}` : "Producto no identificado")
+
+        // Usamos la descripción del card (sin duplicar summary) y dejamos el producto solo en el título
+        const descripcion = (lastAI?.card?.description || response || "").trim() || "Sin descripción"
+        const prioridad = lastAI?.card?.priority || 'media'
+        const impacto = lastAI?.card?.impact || ''
+        const metadatos = lastAI ? { ...lastAI, product_label: productLabel } : { summary: response, product_label: productLabel }
+
+        try {
+            const body: any = {
+                descripcion,
+                prioridad,
+                impacto,
+                metadatos,
+            }
+            body.producto = productoId
+
+            const res = await fetch(`${API_BASE}/recomendaciones/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            })
+            if (!res.ok) {
+                const t = await res.text()
+                throw new Error(t || `Error ${res.status}`)
+            }
+            const saved = await res.json()
+            // Añadir al panel con id para poder eliminar
+            const newRec = {
+                id: saved.id,
+                type: 'custom',
+                priority: prioridad === 'alta' ? 'high' : prioridad === 'baja' ? 'low' : 'medium',
+                title: `${lastAI?.card?.title || 'Recomendación'} · ${productLabel}`.slice(0, 80),
+                description: descripcion,
+                impact: impacto,
+                icon: undefined,
+                generatedAt: saved.fecha || new Date().toISOString(),
+            }
+            setRecommendations((prev) => [newRec, ...prev])
+        } catch (e: any) {
+            const msg = e?.message || 'No se pudo guardar la recomendación'
+            setResponse(msg)
+        }
     }
 
     return (
@@ -137,7 +221,7 @@ export default function IaRecomendacionesPage() {
                                             <label className="flex-1">
                                                 <div className="text-sm font-medium mb-1">Categoría</div>
                                                 <Select value={selectedCategory} onValueChange={(v: string) => { setSelectedCategory(v); setSelectedProduct("") }}>
-                                                    <SelectTrigger className="w-full text-foreground placeholder:text-muted-foreground">{categories.find((c) => c.id === selectedCategory)?.name}</SelectTrigger>
+                                                    <SelectTrigger className="w-full text-foreground placeholder:text-muted-foreground">{categories.find((c) => c.id === selectedCategory)?.name || (fetchingProducts ? "Cargando..." : "-- Sin datos --")}</SelectTrigger>
                                                     <SelectContent>
                                                         {categories.map((c) => (
                                                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -200,6 +284,14 @@ export default function IaRecomendacionesPage() {
                                 await new Promise((r) => setTimeout(r, 400))
                                 // TODO: fetch(`/api/recommendations?date=${today}`) y actualizar setRecommendations
                                 return
+                            }} onDelete={async (id: number) => {
+                                try {
+                                    const res = await fetch(`${API_BASE}/recomendaciones/${id}/`, { method: 'DELETE' })
+                                    if (!res.ok) throw new Error(`Error ${res.status}`)
+                                    setRecommendations((prev) => prev.filter((r: any) => r.id !== id))
+                                } catch (e) {
+                                    // opcional: mostrar toast
+                                }
                             }} />
                         </div>
                     </div>
