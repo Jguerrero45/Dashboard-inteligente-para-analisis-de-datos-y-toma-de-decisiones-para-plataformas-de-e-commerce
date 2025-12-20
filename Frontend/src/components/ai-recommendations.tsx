@@ -129,7 +129,11 @@ export function AIRecommendations({ recommendations: propRecommendations, onRefr
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">{rec.description}</p>
-                    <p className="text-sm font-medium text-primary">{rec.impact}</p>
+                    {rec.impact ? (
+                      <p className="text-sm font-medium text-primary">
+                        Beneficio: {rec.impact}
+                      </p>
+                    ) : null}
                     {onDelete && typeof rec.id === 'number' ? (
                       <div className="pt-2">
                         <Button

@@ -20,6 +20,11 @@ urlpatterns = [
     # Export endpoints for reports
     path('export/pdf/', views.ExportPDFView.as_view(), name='export-pdf'),
     path('export/csv/', views.ExportCSVView.as_view(), name='export-csv'),
+    # Costos: exportar plantilla e importar CSV
+    path('productos/costos/exportar-plantilla/',
+         views.ExportCostTemplateView.as_view(), name='export-cost-template'),
+    path('productos/costos/importar/',
+         views.ImportCostsView.as_view(), name='import-costs'),
     # Endpoints para métricas del dashboard
     path('metrics/sales-monthly/',
          views.SalesMonthlyView.as_view(), name='sales-monthly'),

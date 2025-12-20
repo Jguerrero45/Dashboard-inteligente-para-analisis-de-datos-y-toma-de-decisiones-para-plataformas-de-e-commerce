@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Filter, Package, TrendingUp, TrendingDown } from "lucide-react"
+import { Search, Filter, Package, TrendingUp, TrendingDown, Download } from "lucide-react"
 import { useCurrency } from "@/hooks/use-currency"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
+
 
 // Estado local: será llenado desde la API
 const productosData: Array<any> = []
@@ -24,44 +25,54 @@ export default function ProductosPage() {
   const [loading, setLoading] = useState(false)
   const [errorLoad, setErrorLoad] = useState<string | null>(null)
 
-  // Cargar productos desde la API al montar
-  useEffect(() => {
+  // Cargar productos desde la API (reutilizable)
+  async function fetchProductos() {
     setLoading(true)
-    fetch('/api/Productos/')
-      .then(async (res) => {
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          throw new Error(data.detail || 'Error al cargar productos')
-        }
-        return res.json()
-      })
-      .then((data) => {
-        const normalized = data.map((p: any) => ({
-          origId: p.id,
-          id: p.id,
-          nombre: p.nombre,
-          categoria: p.categoria,
-          precio: parseFloat(p.precio) || 0,
-          stock: Number(p.stock) || 0,
-          // preferimos el agregado `vendidos_total` (suma de cantidades vendidas)
-          // `ventas_count` es solo el número de líneas (rows) y puede diferir de unidades vendidas
-          vendidos: p.vendidos_total != null ? Number(p.vendidos_total) : (p.vendidos || Number(p.ventas_count) || 0),
-          ventas_count: p.ventas_count,
-          ingreso_total: p.ingreso_total != null ? parseFloat(p.ingreso_total) : 0,
-          vendidos_total: p.vendidos_total != null ? Number(p.vendidos_total) : null,
-          ultima_venta: p.ultima_venta ? new Date(p.ultima_venta) : null,
-          tendencias: p.tendencias,
-          tendencia: (p.tendencias === 'alta' ? 'up' : (p.tendencias === 'baja' ? 'down' : 'neutral')),
-          estado: p.estado,
-        }))
-        setProductos(normalized)
-      })
-      .catch((err) => {
-        console.error('Error cargando productos', err)
-        setErrorLoad(String(err))
-      })
-      .finally(() => setLoading(false))
-  }, [])
+    setErrorLoad(null)
+    try {
+      const res = await fetch('/api/Productos/')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.detail || 'Error al cargar productos')
+      }
+      const data = await res.json()
+      const normalized = data.map((p: any) => ({
+        origId: p.id,
+        id: p.id,
+        nombre: p.nombre,
+        categoria: p.categoria,
+        precio: parseFloat(p.precio) || 0,
+        costo: p.costo != null ? Number(p.costo) : null,
+        stock: Number(p.stock) || 0,
+        vendidos: p.vendidos_total != null ? Number(p.vendidos_total) : (p.vendidos || Number(p.ventas_count) || 0),
+        ventas_count: p.ventas_count,
+        ingreso_total: p.ingreso_total != null ? parseFloat(p.ingreso_total) : 0,
+        vendidos_total: p.vendidos_total != null ? Number(p.vendidos_total) : null,
+        ultima_venta: p.ultima_venta ? new Date(p.ultima_venta) : null,
+        tendencias: p.tendencias,
+        tendencia: (p.tendencias === 'alta' ? 'up' : (p.tendencias === 'baja' ? 'down' : 'neutral')),
+        estado: p.estado,
+      }))
+      setProductos(normalized)
+    } catch (err: any) {
+      console.error('Error cargando productos', err)
+      setErrorLoad(String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchProductos() }, [])
+  function handleExportProductos() {
+    const a = document.createElement('a')
+    a.href = '/api/export/csv/?tipo=productos&count=all'
+    a.download = 'productos.csv'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
+
+  // Funcionalidad de costos se movió al módulo "Costos"
 
   // Filtrar productos
   const productosFiltrados = productos.filter((producto) => {
@@ -227,8 +238,14 @@ export default function ProductosPage() {
                     <span className="text-sm">Página {page + 1} / {totalPages}</span>
                     <Button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1} variant="outline">→</Button>
                   </div>
-                  {loading ? <div className="text-sm">Cargando...</div> : errorLoad ? <div className="text-sm text-destructive">{errorLoad}</div> : null}
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={handleExportProductos}>
+                      <Download className="mr-2 h-4 w-4" /> Exportar Productos CSV
+                    </Button>
+                    {loading ? <div className="text-sm">Cargando...</div> : errorLoad ? <div className="text-sm text-destructive">{errorLoad}</div> : null}
+                  </div>
                 </div>
+                {loading ? <div className="px-4 py-2 text-sm">Cargando...</div> : errorLoad ? <div className="px-4 py-2 text-sm text-destructive">{errorLoad}</div> : null}
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -236,6 +253,7 @@ export default function ProductosPage() {
                       <TableHead>Producto</TableHead>
                       <TableHead>Categoría</TableHead>
                       <TableHead>Precio</TableHead>
+                      <TableHead>Costo</TableHead>
 
                       <TableHead>Stock</TableHead>
                       <TableHead>Vendidos</TableHead>
@@ -259,6 +277,9 @@ export default function ProductosPage() {
                             <TableCell>{producto.nombre}</TableCell>
                             <TableCell>{producto.categoria}</TableCell>
                             <TableCell className="font-semibold">{formatPrice(producto.precio)}</TableCell>
+                            <TableCell>
+                              {producto.costo != null ? formatPrice(producto.costo) : <span className="text-muted-foreground">—</span>}
+                            </TableCell>
 
                             <TableCell>
                               <span style={{

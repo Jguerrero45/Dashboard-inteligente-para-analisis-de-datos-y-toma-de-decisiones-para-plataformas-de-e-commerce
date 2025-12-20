@@ -28,6 +28,7 @@ import io
 import csv
 import datetime
 from .services.gemini_client import generate_ai_recommendation, GeminiError
+from django.db.models import DecimalField, ExpressionWrapper
 
 MONTH_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May",
                    "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -167,15 +168,24 @@ class AIRecommendationsView(APIView):
 
         category = data.get('category') or data.get('categoria')
         try:
-            limit = int(data.get('limit', 3))
+            limit = int(data.get('limit', 20))
         except Exception:
-            limit = 3
-        limit = max(1, min(limit, 5))
-        if product_ids:
-            try:
-                limit = max(1, min(len(product_ids), 5))
-            except Exception:
-                pass
+            limit = 20
+        # Calcular límite razonable según filtros (sin cap estricto de 5)
+        try:
+            if product_ids:
+                limit = max(1, len(product_ids))
+            elif category:
+                from .models import Productos
+                count_cat = Productos.objects.filter(
+                    categoria__iexact=category).count()
+                limit = max(1, min(count_cat or 1, 50))
+            else:
+                from .models import Productos
+                total = Productos.objects.count()
+                limit = max(1, min(total or 1, 50))
+        except Exception:
+            limit = max(1, min(limit, 50))
 
         try:
             payload = generate_ai_recommendation(
@@ -315,19 +325,91 @@ class RevenueByCategoryView(APIView):
         # se puede filtrar por periodo, pero por defecto usamos todas las ventas completadas
         qs = VentaItem.objects.select_related('producto', 'venta').filter(
             venta__estado=Ventas.ESTADO_COMPLETADA)
+        # costo real = cantidad * producto.costo (cuando existe)
+        cost_expr = ExpressionWrapper(
+            F('cantidad') * F('producto__costo'), output_field=DecimalField(max_digits=18, decimal_places=2))
         agg = (
             qs.values(cat=F('producto__categoria'))
-            .annotate(revenue=Sum('precio_total'))
+            .annotate(revenue=Sum('precio_total'), cost_sum=Sum(cost_expr))
             .order_by('-revenue')
         )
         data = []
-        COST_RATIO = 0.6  # suposición: 60% del ingreso es costo
+        COST_RATIO = 0.6  # fallback cuando no hay costo cargado
         for item in agg:
-            revenue = float(item['revenue'] or 0)
-            cost = revenue * COST_RATIO
-            data.append(
-                {'category': item['cat'] or 'Sin categoría', 'revenue': revenue, 'cost': cost})
+            revenue = float(item.get('revenue') or 0)
+            cost_sum = item.get('cost_sum')
+            if cost_sum is not None:
+                try:
+                    cost = float(cost_sum)
+                except Exception:
+                    cost = revenue * COST_RATIO
+            else:
+                cost = revenue * COST_RATIO
+            data.append({'category': item.get('cat')
+                        or 'Sin categoría', 'revenue': revenue, 'cost': cost})
         return Response(data)
+
+
+class ExportCostTemplateView(View):
+    """Exporta una plantilla CSV con nombres de productos y columna 'costo' vacía."""
+
+    def get(self, request):
+        products = Productos.objects.all().order_by('nombre')
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(['nombre', 'costo'])
+        for p in products:
+            writer.writerow([p.nombre, ''])
+        resp = HttpResponse(buffer.getvalue(), content_type='text/csv')
+        now = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        resp['Content-Disposition'] = f'attachment; filename="plantilla_costos_{now}.csv"'
+        return resp
+
+
+class ImportCostsView(APIView):
+    """Importa costos desde un CSV con columnas: nombre,costo."""
+
+    def post(self, request):
+        file = request.FILES.get('file') or request.FILES.get('csv')
+        if not file:
+            return Response({'detail': 'Archivo CSV no recibido (use campo "file").'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            import io as _io
+            decoded = _io.TextIOWrapper(file.file, encoding='utf-8')
+            reader = csv.DictReader(decoded)
+        except Exception as exc:
+            return Response({'detail': f'CSV inválido: {exc}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        updated = 0
+        errors = []
+        for idx, row in enumerate(reader, start=2):  # header is line 1
+            name = (row.get('nombre') or row.get('producto') or '').strip()
+            costo_raw = (row.get('costo') or row.get('precio') or '').strip()
+            if not name:
+                errors.append(f'Fila {idx}: falta nombre')
+                continue
+            if costo_raw == '':
+                # vacío: ignorar (permite dejar sin costo)
+                continue
+            # normalizar separadores decimales
+            costo_norm = costo_raw.replace(',', '.')
+            from decimal import Decimal, InvalidOperation
+            try:
+                costo_val = Decimal(costo_norm)
+            except InvalidOperation:
+                errors.append(f'Fila {idx}: costo inválido "{costo_raw}"')
+                continue
+            qs = Productos.objects.filter(nombre=name)
+            if not qs.exists():
+                errors.append(f'Fila {idx}: producto "{name}" no encontrado')
+                continue
+            # actualizar todos los coincidientes por nombre (según requerimiento de plantilla por nombre)
+            for p in qs:
+                p.costo = costo_val
+                p.save(update_fields=['costo'])
+                updated += 1
+
+        return Response({'updated': updated, 'errors': errors})
 
 
 class QuantityByCategoryView(APIView):

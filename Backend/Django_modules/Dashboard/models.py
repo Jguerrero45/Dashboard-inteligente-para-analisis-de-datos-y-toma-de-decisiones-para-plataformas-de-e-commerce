@@ -74,7 +74,9 @@ class Productos(models.Model):
     nombre = models.CharField(max_length=150)
     categoria = models.CharField(max_length=200)
     precio = models.FloatField()
-    # costo y utilidad fueron removidos: se calculan a partir de precio cuando se necesite
+    # Costo de adquisición (opcional). Permite cálculos reales de margen.
+    costo = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True)
     stock = models.IntegerField()
     vendidos = models.IntegerField()
     # Tendencias

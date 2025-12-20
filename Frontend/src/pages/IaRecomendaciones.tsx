@@ -20,6 +20,7 @@ export default function IaRecomendacionesPage() {
     // Guardamos localmente en estado y enviamos comentario TODO donde se necesite persistencia.
     const today = new Date().toISOString().slice(0, 10)
     const [recommendations, setRecommendations] = useState<any[]>([])
+    const [loadingRecs, setLoadingRecs] = useState(false)
 
     // Fetch productos reales desde backend
     useEffect(() => {
@@ -75,14 +76,23 @@ export default function IaRecomendacionesPage() {
     // Solicita recomendaciones al backend (Gemini). Si falla con filtros, reintenta sin filtros.
     async function requestRecommendation(useFilters: boolean, alreadyRetried = false) {
         setLoading(true)
-        const payload: Record<string, any> = { limit: 3 }
+        // Definir un límite amplio según filtros para que Gemini analice más productos
+        const payload: Record<string, any> = {}
 
         if (useFilters) {
             const cat = categories.find((c) => c.id === selectedCategory)
             if (cat?.id && cat.id !== "ALL_CAT") payload.category = cat.id
             if (selectedProduct && !Number.isNaN(Number(selectedProduct))) {
                 payload.product_ids = [Number(selectedProduct)]
+                payload.limit = 1
+            } else {
+                // Si solo hay categoría, tomar cantidad de productos de esa categoría (cap 50)
+                const count = (productsByCategory[selectedCategory] ?? []).length
+                payload.limit = Math.max(1, Math.min(count || 20, 50))
             }
+        } else {
+            // Sin filtros, usar total de productos conocidos (cap 50)
+            payload.limit = Math.max(1, Math.min(products.length || 20, 50))
         }
 
         try {
@@ -181,12 +191,55 @@ export default function IaRecomendacionesPage() {
                 icon: undefined,
                 generatedAt: saved.fecha || new Date().toISOString(),
             }
+            // Actualizar lista local y refrescar desde backend para persistencia visible tras recarga
             setRecommendations((prev) => [newRec, ...prev])
+            await loadRecommendations()
         } catch (e: any) {
             const msg = e?.message || 'No se pudo guardar la recomendación'
             setResponse(msg)
         }
     }
+
+    // Cargar recomendaciones guardadas desde backend y mapear a UI
+    async function loadRecommendations() {
+        try {
+            setLoadingRecs(true)
+            const res = await fetch(`${API_BASE}/recomendaciones/`)
+            if (!res.ok) throw new Error(`Error ${res.status}`)
+            const data = await res.json()
+            if (Array.isArray(data)) {
+                const mapped = data.map((r: any) => {
+                    const prioridad = (r.prioridad || 'media').toLowerCase()
+                    const priority = prioridad === 'alta' ? 'high' : prioridad === 'baja' ? 'low' : 'medium'
+                    const meta = r.metadatos || {}
+                    const cardTitle = meta?.card?.title || 'Recomendación'
+                    const productLabel = meta?.product_label || ''
+                    const title = `${cardTitle}${productLabel ? ` · ${productLabel}` : ''}`.slice(0, 80)
+                    return {
+                        id: r.id,
+                        type: 'custom',
+                        priority,
+                        title,
+                        description: r.descripcion || '',
+                        impact: r.impacto || '',
+                        icon: undefined,
+                        generatedAt: r.fecha || new Date().toISOString(),
+                    }
+                })
+                setRecommendations(mapped)
+            }
+        } catch (e) {
+            // silencioso: si falla, se mantiene la lista actual
+        } finally {
+            setLoadingRecs(false)
+        }
+    }
+
+    // Cargar al montar la página
+    useEffect(() => {
+        loadRecommendations()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [API_BASE])
 
     return (
         <div className="flex min-h-screen flex-col bg-background">
@@ -280,9 +333,7 @@ export default function IaRecomendacionesPage() {
 
                         <div className="md:col-span-1">
                             <AIRecommendations recommendations={recommendations} onRefresh={async () => {
-                                // Handler de refresco: aquí podrías hacer un fetch a backend para obtener las últimas recomendaciones
-                                await new Promise((r) => setTimeout(r, 400))
-                                // TODO: fetch(`/api/recommendations?date=${today}`) y actualizar setRecommendations
+                                await loadRecommendations()
                                 return
                             }} onDelete={async (id: number) => {
                                 try {

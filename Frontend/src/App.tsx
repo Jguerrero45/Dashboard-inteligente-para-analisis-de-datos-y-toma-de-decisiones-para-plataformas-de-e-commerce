@@ -14,6 +14,7 @@ import Perfil from "./pages/Perfil"
 import Welcome from "./pages/Welcome"
 import Login from "./pages/Login"
 import Register from "./pages/Register"
+import Costos from "./pages/Costos"
 
 function App() {
   const AuthRedirect: React.FC = () => {
@@ -35,6 +36,7 @@ function App() {
           <Route path="/productos" element={<Productos />} />
           <Route path="/ventas" element={<Ventas />} />
           <Route path="/clientes" element={<Clientes />} />
+          <Route path="/costos" element={<Costos />} />
           <Route path="/ia-recomendaciones" element={<IaRecomendaciones />} />
           <Route path="/perfil" element={<Perfil />} />
           <Route path="/reportes" element={<Reportes />} />

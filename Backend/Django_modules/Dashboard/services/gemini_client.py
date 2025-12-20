@@ -92,6 +92,17 @@ def _collect_product_context(
         revenue_prev = float(prev.get("revenue") or 0)
 
         stock_val = int(p.stock or 0)
+        # Costos y márgenes
+        try:
+            costo_val = float(p.costo) if getattr(
+                p, 'costo', None) is not None else None
+        except Exception:
+            costo_val = None
+        precio_val = float(p.precio or 0)
+        margen_unit = (
+            precio_val - costo_val) if (costo_val is not None) else None
+        margen_pct = ((margen_unit / precio_val) *
+                      100.0) if (margen_unit is not None and precio_val > 0) else None
 
         # Variación: si no hay histórico previo, la marcamos en 0 para evitar saltos enormes
         change_pct_units = 0.0
@@ -102,14 +113,25 @@ def _collect_product_context(
         weekly_avg_recent = units_recent / 4.0 if units_recent else 0.0
         weekly_avg_prev = units_prev / 4.0 if units_prev else 0.0
 
+        # Cobertura en semanas: si no hay ventas recientes, dejar como None (no definido)
         cover_weeks = (
-            stock_val / weekly_avg_recent) if weekly_avg_recent > 0 else float("inf")
+            stock_val / weekly_avg_recent) if weekly_avg_recent > 0 else None
+        # Beneficios estimados (30d) usando margen unitario
+        profit_30d = (
+            units_recent * margen_unit) if (margen_unit is not None) else 0.0
+        profit_prev_30d = (
+            units_prev * margen_unit) if (margen_unit is not None) else 0.0
+        inv_valorado = (
+            stock_val * costo_val) if (costo_val is not None) else None
         ctx.append(
             {
                 "id": p.id,
                 "nombre": p.nombre,
                 "categoria": p.categoria,
                 "precio": float(p.precio or 0),
+                "costo": costo_val,
+                "margen_unit": margen_unit,
+                "margen_pct": margen_pct,
                 "stock": stock_val,
                 "tendencia": p.tendencias,
                 "estado": p.estado,
@@ -121,7 +143,11 @@ def _collect_product_context(
                 "venta_prom_semanal": weekly_avg_recent,
                 "venta_prom_prev_semanal": weekly_avg_prev,
                 "stock_cover_weeks": cover_weeks,
-                "stock_vs_prev_units": (stock_val / units_prev) if units_prev > 0 else float("inf"),
+                # Relación stock vs unidades previas: None si no hay histórico previo
+                "stock_vs_prev_units": (stock_val / units_prev) if units_prev > 0 else None,
+                "beneficio_30d": profit_30d,
+                "beneficio_prev_30d": profit_prev_30d,
+                "inventario_valorado": inv_valorado,
             }
         )
 
@@ -133,12 +159,13 @@ def _build_prompt(products_ctx: List[dict]) -> str:
     for p in products_ctx:
         bullets.append(
             (
-                f"Producto: {p['nombre']} (cat: {p['categoria']}), precio {p['precio']:.2f}, "
+                f"Producto: {p['nombre']} (cat: {p['categoria']}), precio {p['precio']:.2f}, costo {(p.get('costo') if p.get('costo') is not None else 'N/A')}, "
+                f"margen_unit {(p.get('margen_unit') if p.get('margen_unit') is not None else 'N/A')}, margen_pct {(p.get('margen_pct') if p.get('margen_pct') is not None else 'N/A')}, "
                 f"stock {p['stock']}, tendencia {p['tendencia']}, estado {p['estado']}; "
                 f"ventas 30d: {p['ventas_30d']} uds (${p['revenue_30d']:.2f}), "
                 f"previas 30d: {p['ventas_prev_30d']} uds (${p['revenue_prev_30d']:.2f}), "
                 f"variación unidades: {p['variacion_unidades_pct']:.1f}%, "
-                f"prom semanal reciente: {p['venta_prom_semanal']:.2f} uds"
+                f"prom semanal reciente: {p['venta_prom_semanal']:.2f} uds, beneficio_30d {(p.get('beneficio_30d') or 0):.2f}"
             )
         )
 
@@ -147,6 +174,7 @@ def _build_prompt(products_ctx: List[dict]) -> str:
     prompt = f"""
 Eres analista de growth/marketing para un e-commerce. Usa SOLO los datos numéricos entregados.
 Redacta la recomendación ya calculada (acción, cambio_pct, impacto) en español claro.
+El impacto debe referirse a beneficio (ganancia) estimada, no solo a ingresos.
 Contexto de productos (no inventes datos distintos):
 {products_block}
 
@@ -168,32 +196,37 @@ def _compute_priorities(products_ctx: List[dict]) -> Tuple[str, str]:
     marketing_priority = "baja"
     stock_priority = "baja"
 
-    # Marketing: usa la mayor variación absoluta de unidades
-    max_var = 0.0
+    # Marketing: combina variación vs beneficio para priorizar acciones con impacto real
+    max_score = 0.0
     for p in products_ctx:
         try:
-            max_var = max(max_var, abs(
-                float(p.get("variacion_unidades_pct") or 0)))
+            var = abs(float(p.get("variacion_unidades_pct") or 0))
+            benefit = float(p.get("beneficio_30d") or 0)
+            score = var * 0.7 + (benefit / 100.0) * 0.3
+            max_score = max(max_score, score)
         except Exception:
             continue
-    if max_var >= 15:
+    if max_score >= 20:
         marketing_priority = "alta"
-    elif max_var >= 7:
+    elif max_score >= 8:
         marketing_priority = "media"
 
-    # Stock: cobertura de semanas (stock / venta_prom_semanal)
+    # Stock: cobertura de semanas y valor de inventario atado (stock * costo)
     min_cover = None
+    max_inv_risk = 0.0
     for p in products_ctx:
         weekly = float(p.get("venta_prom_semanal") or 0)
         stock = float(p.get("stock") or 0)
         cover = stock / weekly if weekly > 0 else float("inf")
+        inv_val = float(p.get("inventario_valorado") or 0)
         if min_cover is None or cover < min_cover:
             min_cover = cover
+        max_inv_risk = max(max_inv_risk, inv_val)
 
     if min_cover is not None:
         if min_cover < 2:
             stock_priority = "alta"
-        elif min_cover < 4:
+        elif min_cover < 4 or max_inv_risk > 0:
             stock_priority = "media"
 
     return marketing_priority, stock_priority
@@ -202,47 +235,58 @@ def _compute_priorities(products_ctx: List[dict]) -> Tuple[str, str]:
 def _evaluate_options(products_ctx: List[dict]) -> Tuple[dict, List[dict]]:
     """Genera varias opciones deterministas y retorna la mejor y el listado completo."""
 
-    # Elegir producto clave: si vienen filtros (un solo producto), úsalo sin rotar.
-    # Si hay varios productos, mantener rotación por día solo cuando no se pasó product_ids.
+    # Elegir producto clave: prioriza beneficio y riesgo de inventario
     if len(products_ctx) == 1:
         key = products_ctx[0]
     else:
         scored = []
         for p in products_ctx:
-            score = float(p.get("ventas_30d") or 0) + \
-                abs(float(p.get("variacion_unidades_pct") or 0)) * 0.3
+            benefit = float(p.get("beneficio_30d") or 0)
+            inv_risk = float(p.get("inventario_valorado") or 0)
+            var = abs(float(p.get("variacion_unidades_pct") or 0))
+            score = benefit * 0.6 + inv_risk * 0.3 + var * 0.1
             scored.append((score, p))
         scored.sort(key=lambda t: t[0], reverse=True)
-        day_idx = timezone.now().timetuple().tm_yday % len(scored)
-        key = scored[day_idx][1]
+        # rotación suave por minuto entre los top 3 para evitar repetición
+        top = scored[:max(1, min(3, len(scored)))]
+        now_ts = timezone.now()
+        # Rotación a nivel de segundos/microsegundos para evitar repetir dentro del mismo minuto
+        idx = ((now_ts.minute * 60) + now_ts.second +
+               (now_ts.microsecond // 1000)) % len(top)
+        key = top[idx][1]
 
     vari = float(key.get("variacion_unidades_pct") or 0)
     cover = float(key.get("stock_cover_weeks") or float("inf"))
     revenue_30d = float(key.get("revenue_30d") or 0)
+    margen_pct = key.get("margen_pct")
+    margen_unit = key.get("margen_unit")
+    costo_val = key.get("costo")
+    beneficio_30d = float(key.get("beneficio_30d") or 0)
 
     options: List[Dict[str, object]] = []
 
     def add_option(rtype: str, change: Optional[int], title: str, rationale: str):
-        # Cap coverage to avoid unreadable huge numbers; special-case no sales
+        # Limitar cobertura para evitar números muy grandes; caso especial sin ventas
         if cover == float("inf"):
             cover_text = "sin ventas recientes"
         else:
             cover_cap = min(cover, 12.0)
-            cover_text = f"{cover_cap:.1f} sem" if cover_cap < 12 else "≥12 sem"
+            cover_text = f"{cover_cap:.1f} semanas" if cover_cap < 12 else "12 o más semanas"
 
-        impact_val = revenue_30d * \
-            (change / 100.0) if revenue_30d > 0 and change else 0.0
-        impact = f"+${impact_val:,.0f} mensuales estimados" if impact_val > 0 else ""
+        # Impacto estimado basado en beneficio (ganancia), no solo ingresos
+        impact_val = beneficio_30d * \
+            (change / 100.0) if (beneficio_30d > 0 and change) else 0.0
+        impact = f"+$${impact_val:,.0f} beneficio mensual estimado" if impact_val > 0 else ""
 
-        # Construir orden breve y accionable
+        # Construir acción clara y sin abreviaciones
         if rtype == "discount":
-            action = f"Acción: aplicar {change}% de descuento inmediato en PDP/carrito y empujar en banner/listados."
+            action = f"Acción: aplicar un descuento del {change}% de forma inmediata en la página del producto y en el carrito, destacándolo en el banner y en los listados."
         elif rtype == "pricing_increase":
-            action = f"Acción: subir precio en {change}% y monitorear conversión 48h." if change else "Acción: subir precio y monitorear conversión 48h."
+            action = f"Acción: aumentar el precio en {change}% y monitorizar la conversión durante 48 horas." if change else "Acción: aumentar el precio y monitorizar la conversión durante 48 horas."
         elif rtype == "bundle":
-            action = "Acción: crear bundle con producto foco + accesorio y destacar en PDP/carrito."
+            action = "Acción: crear un paquete con el producto focal y un accesorio complementario y destacarlo en la página del producto y en el carrito."
         else:  # promo_campaign
-            action = "Acción: lanzar campaña promocional al público que visitó PDP en 14 días con CTA de compra."
+            action = "Acción: lanzar una campaña promocional dirigida a las personas que visitaron la página del producto en los últimos 14 días, con una llamada a la acción para comprar."
 
         desc = f"{action} Motivo: {rationale}. Señal: variación {vari:+.1f}%, cobertura {cover_text}."
         options.append({
@@ -255,46 +299,42 @@ def _evaluate_options(products_ctx: List[dict]) -> Tuple[dict, List[dict]]:
             "impact_val": impact_val,
         })
 
-    # Opciones deterministas
-    if vari >= 12 and cover >= 2:
-        add_option("pricing_increase", 8, "Ajuste de Precio Recomendado",
-                   "Demanda en alza; margen admite subida controlada")
-    if vari <= -12 or cover >= 8:
-        # Razonamiento específico según condición dominante
-        if vari <= -12 and cover >= 8:
-            rationale = "Demanda en caída y stock alto; rotar inventario con descuento"
-        elif vari <= -12:
-            rationale = "Demanda en caída; incentivo de precio para recuperar volumen"
-        else:
-            rationale = "Stock alto; activar descuento para acelerar rotación"
-        add_option("discount", 12,
-                   "Descuento Promocional Recomendado", rationale)
-    if cover < 2:
-        add_option("bundle", None, "Bundle/Combo para Maximizar Ticket",
-                   "Stock bajo; maximizar ticket y proteger disponibilidad")
-    # Opción base
-    add_option("promo_campaign", None, "Campaña Promocional Recomendada",
-               "Campaña segmentada para impulsar conversión y upsell")
+    # Opciones deterministas (cost-aware)
+    # 1) Subida de precio si hay demanda y margen admite mejora
+    if vari >= 8 and (margen_pct is not None and margen_pct <= 50) and cover >= 2:
+        add_option("pricing_increase", 6, "Ajuste de precio basado en margen",
+                   "Demanda al alza y margen mejorable; aumento controlado para elevar el beneficio")
+    # 2) Descuento solo si margen permite absorberlo o hay sobrestock
+    if (margen_pct is not None and margen_pct >= 30 and (vari <= -8 or cover >= 8)) or (cover >= 10):
+        rationale = "Sobrestock o demanda en caída; el margen permite aplicar un descuento sin perder demasiado beneficio"
+        add_option("discount", 10, "Descuento táctico con margen", rationale)
+    # 3) Bundle para elevar ticket cuando margen es bajo o stock es bajo
+    if (margen_pct is not None and margen_pct < 25) or cover < 2:
+        add_option("bundle", None, "Paquete de productos para aumentar el margen",
+                   "Aumentar el valor medio del pedido y mejorar el margen unitario")
+    # 4) Campaña siempre disponible
+    add_option("promo_campaign", None, "Campaña promocional de reimpacto",
+               "Volver a impactar a visitantes recientes de la página del producto con una oferta basada en valor")
     # Variantes adicionales para dinamismo (reutilizan los mismos tipos permitidos)
     if cover >= 10:
-        add_option("discount", 15, "Flash Sale 48h para Liquidar Stock",
-                   "Stock muy alto; venta flash 48h para liberar inventario")
+        add_option("discount", 12, "Venta relámpago de 48 horas para liquidar stock",
+                   "Stock muy alto; venta relámpago de 48 horas para liberar inventario manteniendo el margen")
 
     if vari <= -5 and cover >= 4:
-        add_option("promo_campaign", None, "Remarketing a Visitantes PDP (14d)",
-                   "Tráfico previo sin conversión; reimpactar a visitantes recientes con CTA de compra")
+        add_option("promo_campaign", None, "Reimpacto a visitantes de la página del producto (14 días)",
+                   "Tráfico previo sin conversión; volver a impactar a visitantes recientes con una llamada a la acción para comprar")
 
     if vari >= 6 and cover >= 3 and cover <= 7:
-        add_option("bundle", None, "Cross-sell en PDP/Carrito",
-                   "Demanda moderada; elevar ticket medio con accesorio complementario")
+        add_option("bundle", None, "Venta cruzada en página del producto y carrito",
+                   "Demanda moderada; aumentar el valor medio del pedido con un accesorio complementario")
 
     if revenue_30d > 0 and cover >= 6:
-        add_option("promo_campaign", None, "Envío Gratis Condicionado",
-                   "Stock alto; empujar conversión con envío gratis sobre ticket mínimo")
+        add_option("promo_campaign", None, "Envío gratis condicionado",
+                   "Stock alto; impulsar la conversión ofreciendo envío gratis por encima de un pedido mínimo")
 
     if revenue_30d == 0 and cover != float("inf"):
-        add_option("pricing_decrease", 5, "Rebaja Controlada para Activar Ventas",
-                   "Producto sin ventas recientes; prueba de precio para activar demanda")
+        add_option("pricing_decrease", 5, "Reducción de precio para activar ventas",
+                   "Producto sin ventas recientes; prueba con reducción de precio para activar la demanda")
 
     # Elegir mejor por impacto estimado; desempate por prioridad de tipo.
     # Para evitar que siempre devuelva el mismo mensaje en cada clic, rotamos la selección
@@ -307,14 +347,16 @@ def _evaluate_options(products_ctx: List[dict]) -> Tuple[dict, List[dict]]:
         score += priority_order.get(opt.get("type"), 0) * 0.01
         scored_opts.append((score, opt))
 
-    # Ordenar por score y luego rotar por segundo actual
+    # Ordenar por score y luego elegir entre top 3 con rotación por minuto (para variedad)
     scored_opts.sort(key=lambda t: t[0], reverse=True)
     if not scored_opts:
         return options[0], options
 
-    now_sec = timezone.now().second
-    choice_idx = now_sec % len(scored_opts)
-    best_opt = scored_opts[choice_idx][1]
+    top_opts = scored_opts[:max(1, min(3, len(scored_opts)))]
+    now_ts2 = timezone.now()
+    choice_idx = (now_ts2.second + (now_ts2.microsecond // 1000)
+                  ) % len(top_opts)
+    best_opt = top_opts[choice_idx][1]
 
     return best_opt, options
 
@@ -374,19 +416,15 @@ def generate_ai_recommendation(
         except Exception:
             data = None
 
-    # Si sigue sin JSON, usamos la opción determinista elegida
+    # Usar siempre los campos deterministas para evitar inconsistencias del modelo
     if data is None or not isinstance(data, dict):
         data = best_card
     else:
-        # Reemplazar campos sensibles con los deterministas para asegurar consistencia numérica
-        data.setdefault("change_pct", best_card.get("change_pct"))
-        data.setdefault("type", best_card.get("type"))
-        data.setdefault("title", best_card.get("title"))
-        # impact/description pueden venir del modelo; si faltan, usamos determinista
-        if not data.get("impact"):
-            data["impact"] = best_card.get("impact")
-        if not data.get("description"):
-            data["description"] = best_card.get("description")
+        data["change_pct"] = best_card.get("change_pct")
+        data["type"] = best_card.get("type")
+        data["title"] = best_card.get("title")
+        data["impact"] = best_card.get("impact")
+        data["description"] = best_card.get("description")
 
     # Derivar prioridad en base a tipo y contexto
     reco_type = (data.get("type") or "").strip()
@@ -401,7 +439,19 @@ def generate_ai_recommendation(
             return "media" if marketing_priority == "alta" else marketing_priority
         return marketing_priority
 
-    priority = _derive_priority(reco_type)
+    # Derivar prioridad analítica combinando marketing y stock
+    derived_priority = _derive_priority(reco_type)
+    prio_rank = {"baja": 0, "media": 1, "alta": 2}
+    best_context_priority = derived_priority
+    try:
+        # elegir la más alta entre marketing y stock
+        best_context_priority = max(
+            [derived_priority, stock_priority], key=lambda p: prio_rank.get(
+                p, 0)
+        )
+    except Exception:
+        best_context_priority = derived_priority or marketing_priority
+    priority = best_context_priority
 
     # Formatear summary en 4 líneas: título, prioridad capitalizada, descripción, línea en blanco y luego impacto
     pr_cap = priority.capitalize()

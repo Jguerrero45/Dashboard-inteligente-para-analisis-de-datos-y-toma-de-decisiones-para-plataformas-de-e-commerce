@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Menu, Moon, Sun, DollarSign, User, LogOut, Bell } from "lucide-react"
+import { Menu, Moon, Sun, DollarSign, User, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -20,6 +20,7 @@ import { useCurrency } from "@/hooks/use-currency"
 const navigationItems = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Módulos", href: "/modulos" },
+  { name: "Costos", href: "/costos" },
   { name: "Predicciones", href: "/predicciones" },
   { name: "Ventas", href: "/ventas" },
   { name: "Clientes", href: "/clientes" },
@@ -75,10 +76,7 @@ export function DashboardHeader() {
             <span className="hidden sm:inline-block text-xs text-muted-foreground ml-2">{exchangeRate ? `1 USD ≈ ${new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(exchangeRate)} Bs` : '—'}</span>
           </Button>
 
-          <Button variant="ghost" size="icon" className="hidden sm:flex relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full" style={{ background: 'hsl(var(--color-negative))' }} />
-          </Button>
+          {/* Ícono de notificaciones eliminado por no usar esta función */}
 
           {/* Theme Toggle */}
           <Button
