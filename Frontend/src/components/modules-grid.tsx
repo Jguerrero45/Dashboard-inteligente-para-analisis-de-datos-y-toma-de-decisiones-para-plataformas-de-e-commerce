@@ -13,13 +13,6 @@ const modules = [
     brand: 1,
   },
   {
-    title: "Gestión de Ventas",
-    description: "Administra pedidos, transacciones y seguimiento de ventas",
-    icon: ShoppingCart,
-    href: "/ventas",
-    brand: 2,
-  },
-  {
     title: "Productos",
     description: "Control de inventario, categorías y gestión de catálogo",
     icon: Package,

@@ -9,8 +9,6 @@ router.register(r'Productos', views.Productos_ViewSet)
 router.register(r'Tasa', views.Tasa_ViewSet, basename='tasa')
 router.register(r'Ventas', views.Ventas_ViewSet)
 router.register(r'Venta Item', views.VentaItem_ViewSet)
-router.register(r'modelos', views.ModeloPrediccion_ViewSet)
-router.register(r'predicciones', views.EntradaPrediccion_ViewSet)
 router.register(r'recomendaciones', views.RecomendacionIA_ViewSet)
 
 urlpatterns = [
@@ -42,6 +40,17 @@ urlpatterns = [
          views.TopCategoriesMonthlyView.as_view(), name='top-categories-monthly'),
     path('metrics/sales-heatmap/',
          views.SalesHeatmapView.as_view(), name='sales-heatmap'),
+    path('metrics/returning-customers-rate/',
+         views.ReturningCustomersRateView.as_view(), name='returning-customers-rate'),
+    path('metrics/products-growth/',
+         views.ProductsGrowthView.as_view(), name='products-growth'),
+    # JSON estructurado (mes/producto/categoría)
+    path('metrics/structured-monthly/',
+         views.StructuredMonthlyView.as_view(), name='structured-monthly'),
+    path('metrics/structured-by-product/',
+         views.StructuredByProductView.as_view(), name='structured-by-product'),
+    path('metrics/structured-by-category/',
+         views.StructuredByCategoryView.as_view(), name='structured-by-category'),
     # Recomendaciones IA (Gemini)
     path('ai/recommendations/',
          views.AIRecommendationsView.as_view(), name='ai-recommendations'),

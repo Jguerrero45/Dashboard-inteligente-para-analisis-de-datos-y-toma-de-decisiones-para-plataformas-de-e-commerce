@@ -3,20 +3,18 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import render
-from .models import Clientes, Productos, Ventas, ModeloPrediccion, EntradaPrediccion, RecomendacionIA, VentaItem, Tasa
+from .models import Clientes, Productos, Ventas, RecomendacionIA, VentaItem, Tasa
 from .serializer import (
     Clientes_Serializers,
     Productos_Serializers,
     Ventas_Serializers,
     VentaItem_Serializers,
-    ModeloPrediccion_Serializers,
-    EntradaPrediccion_Serializers,
     RecomendacionIA_Serializers,
     Tasa_Serializers,
     UserRegistrationSerializer,
 )
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Sum, Max, Q
+from django.db.models import Count, Sum, Max, Q, Exists, OuterRef
 from django.db.models import F
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
@@ -27,7 +25,11 @@ from django.template.loader import render_to_string
 import io
 import csv
 import datetime
-from .services.gemini_client import generate_ai_recommendation, GeminiError
+from .services.gemini_client import (
+    generate_ai_recommendation,
+    GeminiError,
+    build_structured_output,
+)
 from django.db.models import DecimalField, ExpressionWrapper
 
 MONTH_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May",
@@ -82,16 +84,10 @@ class Ventas_ViewSet(viewsets.ModelViewSet):
         return Ventas.objects.select_related('cliente').prefetch_related('items__producto').order_by('-fecha')
 
 
-class ModeloPrediccion_ViewSet(viewsets.ModelViewSet):
-    """ViewSet para metadatos de modelos de predicción."""
-    queryset = ModeloPrediccion.objects.all()
-    serializer_class = ModeloPrediccion_Serializers
-
-
-class EntradaPrediccion_ViewSet(viewsets.ModelViewSet):
-    """ViewSet para entradas/resultados de predicción."""
-    queryset = EntradaPrediccion.objects.all()
-    serializer_class = EntradaPrediccion_Serializers
+class Tasa_ViewSet(viewsets.ModelViewSet):
+    """ViewSet para el modelo Tasa."""
+    queryset = Tasa.objects.all().order_by('-fecha')
+    serializer_class = Tasa_Serializers
 
 
 class RecomendacionIA_ViewSet(viewsets.ModelViewSet):
@@ -158,195 +154,141 @@ class AIRecommendationsView(APIView):
 
     def post(self, request):
         data = request.data or {}
-        product_ids = data.get('product_ids') or data.get('productos')
-        if isinstance(product_ids, str):
-            try:
-                product_ids = [int(pid.strip())
-                               for pid in product_ids.split(',') if pid.strip()]
-            except Exception:
-                product_ids = None
+        returning_prev = returning_prev_qs.count()
+        rate_prev = 0.0
+        total_prev = buyers_prev_qs.count()
+        if total_prev > 0:
+            rate_prev = round((returning_prev / total_prev) * 100, 2)
 
-        category = data.get('category') or data.get('categoria')
-        try:
-            limit = int(data.get('limit', 20))
-        except Exception:
-            limit = 20
-        # Calcular límite razonable según filtros (sin cap estricto de 5)
-        try:
-            if product_ids:
-                limit = max(1, len(product_ids))
-            elif category:
-                from .models import Productos
-                count_cat = Productos.objects.filter(
-                    categoria__iexact=category).count()
-                limit = max(1, min(count_cat or 1, 50))
-            else:
-                from .models import Productos
-                total = Productos.objects.count()
-                limit = max(1, min(total or 1, 50))
-        except Exception:
-            limit = max(1, min(limit, 50))
+        projected_rate = rate + (rate - rate_prev)
+        projected_rate = max(0.0, min(100.0, projected_rate))
 
-        try:
-            payload = generate_ai_recommendation(
-                product_ids=product_ids,
-                category=category,
-                limit=limit,
-            )
-            return Response(payload)
-        except GeminiError as exc:
-            return Response({'detail': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except Exception as exc:  # noqa: BLE001
-            return Response({'detail': f'Error inesperado: {exc}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({
+            'rate': rate,
+            'total_buyers': total_buyers,
+            'returning_buyers': returning_buyers,
+            'rate_prev': rate_prev,
+            'projected_rate': projected_rate,
+            'days': days,
+        })
 
 
-class Tasa_ViewSet(viewsets.ViewSet):
-    """Endpoint liviano para obtener/crear la tasa del día.
+class ProductsGrowthView(APIView):
+    """Productos con mayor crecimiento reciente.
 
-    Comportamiento GET (list):
-    - Si existe una Tasa con `fecha=today`, devolverla.
-    - Si no existe, consultar un proveedor externo (exchangerate.host), guardar
-      la tasa USD->VES en la tabla `Tasa` y devolverla.
-    """
-
-    def list(self, request):
-        from django.utils import timezone
-        import urllib.request
-        import json
-
-        today = timezone.now().date()
-        tasa_obj = Tasa.objects.filter(
-            fecha=today).order_by('-creado_en').first()
-        if tasa_obj:
-            serializer = Tasa_Serializers(tasa_obj)
-            return Response(serializer.data)
-
-        # No hay tasa para hoy: intentar obtenerla de exchangerate.host
-        try:
-            url = 'https://api.exchangerate.host/latest?base=USD&symbols=VES'
-            with urllib.request.urlopen(url, timeout=10) as resp:
-                data = json.loads(resp.read().decode('utf-8'))
-            rate = data.get('rates', {}).get('VES')
-            if rate is None:
-                raise ValueError('No se obtuvo tasa VES en la respuesta')
-
-            # Guardar en la BD
-            tasa_obj = Tasa.objects.create(fecha=today, tasa=rate)
-            serializer = Tasa_Serializers(tasa_obj)
-            return Response(serializer.data)
-        except Exception as e:
-            # En caso de falla, intentar devolver la última tasa guardada
-            last = Tasa.objects.order_by('-fecha').first()
-            if last:
-                serializer = Tasa_Serializers(last)
-                return Response(serializer.data)
-            # Si no hay nada, devolver error 503
-            return Response({'detail': 'No se pudo obtener la tasa'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-
-class SalesMonthlyView(APIView):
-    """Devuelve ventas totales por mes (últimos N meses).
-
-    Response: [{ month: 'Ene', sales: 12345.67 }, ...]
+    Calcula crecimiento de ingresos por producto entre los últimos N días y el periodo previo.
+    Parámetros: ?days=30 (ventana actual), ?limit=10
+    Response: [{ producto_id, producto, revenue_now, revenue_prev, growth_pct }]
     """
 
     def get(self, request):
-        # parámetro opcional months (int)
-        months = int(request.query_params.get('months', 12))
-        today = timezone.now().date()
-        # construir lista de meses (year, month) descendente desde current
-        months_list = []
-        year = today.year
-        month = today.month
-        for i in range(months - 1, -1, -1):
-            # retroceder i meses
-            m = month - i
-            y = year
-            while m <= 0:
-                m += 12
-                y -= 1
-            months_list.append((y, m))
+        days = int(request.query_params.get('days', 30))
+        limit = int(request.query_params.get('limit', 10))
+        today = timezone.now()
+        start_now = today - datetime.timedelta(days=days)
+        start_prev = start_now - datetime.timedelta(days=days)
 
-        # Agregamos por mes usando TruncMonth
-        # Ventas (cabeceras) agregadas por mes
-        ventas_qs = Ventas.objects.filter(estado=Ventas.ESTADO_COMPLETADA)
-        ventas_agg = (
-            ventas_qs.annotate(m=TruncMonth('fecha'))
-            .values('m')
-            .annotate(sales_sum=Sum('precio_total'), sales_count=Count('id'))
-            .order_by('m')
+        # Ventana actual
+        items_now = (
+            VentaItem.objects.select_related('producto', 'venta')
+            .filter(venta__estado=Ventas.ESTADO_COMPLETADA, venta__fecha__gte=start_now, venta__fecha__lte=today)
+            .values('producto__id', 'producto__nombre')
+            .annotate(revenue=Sum('precio_total'))
         )
-        ventas_map = {item['m'].date().replace(day=1): {
-            'sales_sum': float(item.get('sales_sum') or 0),
-            'sales_count': int(item.get('sales_count') or 0)
-        } for item in ventas_agg}
+        now_map = {it['producto__id']: float(
+            it.get('revenue') or 0) for it in items_now}
 
-        # Items agregados por mes (más granular) — usamos venta__fecha
-        items_qs = VentaItem.objects.select_related(
-            'venta').filter(venta__estado=Ventas.ESTADO_COMPLETADA)
-        items_agg = (
-            items_qs.annotate(m=TruncMonth('venta__fecha'))
-            .values('m')
-            .annotate(items_revenue=Sum('precio_total'), items_count=Count('id'))
-            .order_by('m')
+        # Ventana previa
+        items_prev = (
+            VentaItem.objects.select_related('producto', 'venta')
+            .filter(venta__estado=Ventas.ESTADO_COMPLETADA, venta__fecha__gte=start_prev, venta__fecha__lt=start_now)
+            .values('producto__id', 'producto__nombre')
+            .annotate(revenue=Sum('precio_total'))
         )
-        items_map = {item['m'].date().replace(day=1): {
-            'items_revenue': float(item.get('items_revenue') or 0),
-            'items_count': int(item.get('items_count') or 0)
-        } for item in items_agg}
+        prev_map = {it['producto__id']: float(
+            it.get('revenue') or 0) for it in items_prev}
 
-        data = []
-        for y, m in months_list:
-            key = timezone.datetime(year=y, month=m, day=1).date()
-            label = MONTH_LABELS_ES[m - 1]
-            v = ventas_map.get(key, {'sales_sum': 0.0, 'sales_count': 0})
-            it = items_map.get(key, {'items_revenue': 0.0, 'items_count': 0})
-            data.append({
-                'month': label,
-                'sales_sum': v['sales_sum'],
-                'sales_count': v['sales_count'],
-                'items_revenue': it['items_revenue'],
-                'items_count': it['items_count'],
+        rows = []
+        product_names = {it['producto__id']                         : it['producto__nombre'] for it in items_now}
+        product_names.update(
+            {it['producto__id']: it['producto__nombre'] for it in items_prev})
+
+        for pid, rev_now in now_map.items():
+            rev_prev = prev_map.get(pid, 0.0)
+            if rev_prev > 0:
+                growth = ((rev_now - rev_prev) / rev_prev) * 100
+            else:
+                growth = 100.0 if rev_now > 0 else 0.0
+            projected_revenue = rev_now * (1 + max(growth, 0) / 100)
+            rows.append({
+                'producto_id': pid,
+                'producto': product_names.get(pid) or f'Producto {pid}',
+                'revenue_now': round(rev_now, 2),
+                'revenue_prev': round(rev_prev, 2),
+                'growth_pct': round(growth, 1),
+                'projected_revenue': round(projected_revenue, 2),
             })
 
-        return Response(data)
+        rows = [r for r in rows if r['growth_pct'] > 0]
+        rows = sorted(rows, key=lambda x: x['growth_pct'], reverse=True)[
+            :max(1, limit)]
+
+        # Saneamiento de nombres de producto: remover códigos tipo "-XX-###" y espacios extra
+        try:
+            import re as _re
+            for r in rows:
+                pname = r.get('producto') or ''
+                pname = _re.sub(r"\s*-?[A-Za-z0-9]{2,3}-###\s*", " ", pname)
+                pname = _re.sub(r"\s+", " ", pname).strip()
+                r['producto'] = pname
+        except Exception:
+            pass
+
+        return Response(rows)
 
 
 class RevenueByCategoryView(APIView):
-    """Devuelve ingresos y un costo estimado por categoría.
-
-    Response: [{ category: 'Electrónica', revenue: 12345.67, cost: 8000 }, ...]
-    Nota: el modelo no contiene un campo 'cost' por producto; se estima aquí como
-    un porcentaje del ingreso (asumimos 60% como costo). Si hay una fuente
-    real de costo, reemplazar la estimación.
-    """
+    """Devuelve ingresos y costo por categoría en una ventana de días."""
 
     def get(self, request):
-        # se puede filtrar por periodo, pero por defecto usamos todas las ventas completadas
-        qs = VentaItem.objects.select_related('producto', 'venta').filter(
-            venta__estado=Ventas.ESTADO_COMPLETADA)
-        # costo real = cantidad * producto.costo (cuando existe)
+        from datetime import timedelta
+
+        try:
+            days = int(request.query_params.get('days', 30))
+        except Exception:
+            days = 30
+
+        now = timezone.now()
+        start = now - timedelta(days=days)
+
+        qs = (
+            VentaItem.objects.select_related('venta', 'producto')
+            .filter(venta__estado=Ventas.ESTADO_COMPLETADA, venta__fecha__gte=start, venta__fecha__lte=now)
+        )
+
         cost_expr = ExpressionWrapper(
-            F('cantidad') * F('producto__costo'), output_field=DecimalField(max_digits=18, decimal_places=2))
+            F('cantidad') * F('producto__costo'), output_field=DecimalField(max_digits=14, decimal_places=2)
+        )
+
         agg = (
             qs.values(cat=F('producto__categoria'))
-            .annotate(revenue=Sum('precio_total'), cost_sum=Sum(cost_expr))
+            .annotate(revenue=Sum('precio_total'), cost=Sum(cost_expr))
             .order_by('-revenue')
         )
+
         data = []
-        COST_RATIO = 0.6  # fallback cuando no hay costo cargado
-        for item in agg:
-            revenue = float(item.get('revenue') or 0)
-            cost_sum = item.get('cost_sum')
-            if cost_sum is not None:
-                try:
-                    cost = float(cost_sum)
-                except Exception:
-                    cost = revenue * COST_RATIO
-            else:
-                cost = revenue * COST_RATIO
-            data.append({'category': item.get('cat')
-                        or 'Sin categoría', 'revenue': revenue, 'cost': cost})
+        for row in agg:
+            revenue = float(row.get('revenue') or 0)
+            cost = float(row.get('cost') or 0)
+            margin_pct = ((revenue - cost) / revenue *
+                          100) if revenue > 0 else 0.0
+            data.append({
+                'category': row.get('cat') or 'Sin categoría',
+                'revenue': revenue,
+                'cost': cost,
+                'margin_pct': round(margin_pct, 1),
+            })
+
         return Response(data)
 
 
@@ -647,6 +589,53 @@ class TopCategoriesMonthlyView(APIView):
                 {'category': cat, 'monthly': monthly_values, 'total': int(total)})
 
         return Response({'months': months_labels, 'series': series})
+
+
+class ReturningCustomersRateView(APIView):
+    """Calcula el porcentaje de clientes que vuelven a comprar en una ventana."""
+
+    def get(self, request):
+        from datetime import timedelta
+
+        try:
+            days = int(request.query_params.get('days', 90))
+        except Exception:
+            days = 90
+
+        now = timezone.now()
+        start = now - timedelta(days=days)
+
+        # Compras en ventana
+        window_qs = Ventas.objects.filter(
+            estado=Ventas.ESTADO_COMPLETADA,
+            fecha__gte=start,
+            fecha__lte=now,
+        )
+
+        total_buyers = window_qs.values('cliente_id').distinct().count()
+
+        # Clientes que ya habían comprado antes de la ventana
+        prev_buyers = (
+            Ventas.objects.filter(
+                estado=Ventas.ESTADO_COMPLETADA,
+                fecha__lt=start,
+            )
+            .values_list('cliente_id', flat=True)
+            .distinct()
+        )
+
+        returning_buyers = window_qs.filter(
+            cliente_id__in=prev_buyers).values('cliente_id').distinct().count()
+
+        rate = (returning_buyers / total_buyers *
+                100) if total_buyers > 0 else 0.0
+
+        return Response({
+            'rate': round(rate, 1),
+            'total_buyers': total_buyers,
+            'returning_buyers': returning_buyers,
+            'days': days,
+        })
 
 
 class SalesHeatmapView(APIView):
@@ -971,3 +960,153 @@ class ExportPDFView(View, ExportMixin):
 
 
 # DebugTotalsView removed per request
+
+
+class StructuredMonthlyView(APIView):
+    """JSON estructurado mensual para gráficas.
+
+    Query params:
+        - metric: revenue|units (default revenue)
+        - n_months: número de meses (default 6)
+    Respuesta: {
+        dimension: "month",
+        metric: "revenue"|"units",
+        items: [{label: "YYYY-MM", value}],
+        total: number
+    }
+    """
+
+    def get(self, request):
+        metric = request.query_params.get('metric', 'revenue')
+        try:
+            n_months = int(request.query_params.get('n_months', 6))
+        except Exception:
+            n_months = 6
+        data = build_structured_output(
+            'monthly', metric=metric, n_months=n_months)
+        return Response(data)
+
+
+class SalesMonthlyView(APIView):
+    """Devuelve ventas agregadas por mes.
+
+    Query params:
+      - months: número de meses hacia atrás (default 6)
+
+    Response: [
+      { month: 'Ene', sales_sum, sales_count, items_revenue, items_count, items_units },
+      ...
+    ]
+    """
+
+    def get(self, request):
+        try:
+            months = int(request.query_params.get('months', 6))
+        except Exception:
+            months = 6
+
+        today = timezone.now().date()
+        year = today.year
+        month = today.month
+        months_list = []
+        for i in range(months - 1, -1, -1):
+            m = month - i
+            y = year
+            while m <= 0:
+                m += 12
+                y -= 1
+            months_list.append((y, m))
+
+        data = []
+        for y, m in months_list:
+            start = timezone.datetime(year=y, month=m, day=1).date()
+            if m == 12:
+                end = timezone.datetime(year=y + 1, month=1, day=1).date()
+            else:
+                end = timezone.datetime(year=y, month=m + 1, day=1).date()
+
+            qs_sales = Ventas.objects.filter(
+                fecha__gte=start,
+                fecha__lt=end,
+                estado=Ventas.ESTADO_COMPLETADA,
+            )
+
+            sales_sum = qs_sales.aggregate(
+                total=Sum('precio_total')).get('total') or 0
+            sales_count = qs_sales.count()
+
+            qs_items = VentaItem.objects.filter(venta__in=qs_sales)
+            items_revenue = qs_items.aggregate(
+                total=Sum('precio_total')).get('total') or 0
+            items_count = qs_items.count()
+            items_units = qs_items.aggregate(
+                total=Sum('cantidad')).get('total') or 0
+
+            label = MONTH_LABELS_ES[m - 1]
+            data.append({
+                'month': label,
+                'sales_sum': float(sales_sum),
+                'sales_count': sales_count,
+                'items_revenue': float(items_revenue),
+                'items_count': items_count,
+                'items_units': int(items_units or 0),
+            })
+
+        return Response(data)
+
+
+class StructuredByProductView(APIView):
+    """JSON estructurado por producto para gráficas.
+
+    Query params:
+        - metric: revenue|units (default revenue)
+        - days: ventana en días (default 30)
+        - limit: top N (opcional)
+    Respuesta: {
+        dimension: "product",
+        metric: "revenue"|"units",
+        window_days: number,
+        items: [{id, name, category, value}],
+        total: number
+    }
+    """
+
+    def get(self, request):
+        metric = request.query_params.get('metric', 'revenue')
+        try:
+            days = int(request.query_params.get('days', 30))
+        except Exception:
+            days = 30
+        limit_raw = request.query_params.get('limit')
+        try:
+            limit = int(limit_raw) if limit_raw is not None else None
+        except Exception:
+            limit = None
+        data = build_structured_output(
+            'product', metric=metric, days=days, limit=limit)
+        return Response(data)
+
+
+class StructuredByCategoryView(APIView):
+    """JSON estructurado por categoría para gráficas.
+
+    Query params:
+        - metric: revenue|units (default revenue)
+        - days: ventana en días (default 30)
+    Respuesta: {
+        dimension: "category",
+        metric: "revenue"|"units",
+        window_days: number,
+        items: [{category, value}],
+        total: number
+    }
+    """
+
+    def get(self, request):
+        metric = request.query_params.get('metric', 'revenue')
+        try:
+            days = int(request.query_params.get('days', 30))
+        except Exception:
+            days = 30
+        data = build_structured_output('category', metric=metric, days=days)
+        return Response(data)

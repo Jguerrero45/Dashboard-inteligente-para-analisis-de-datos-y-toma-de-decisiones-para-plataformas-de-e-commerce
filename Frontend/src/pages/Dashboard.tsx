@@ -8,6 +8,10 @@ import { CustomersChart } from "@/components/charts/customers-chart"
 // Conversion and Traffic charts removed per request
 import { TopProductsChart } from "@/components/charts/top-products-chart"
 import { SalesHeatmap } from "@/components/charts/sales-heatmap"
+import { OrdersChart } from "@/components/charts/orders-chart"
+import { ReturningCustomersCard } from "@/components/charts/returning-customers-card"
+import { MarginByCategoryChart } from "@/components/charts/margin-by-category-chart"
+import { CategoryPerformanceRadar } from "@/components/charts/category-performance-radar"
 
 export default function Dashboard() {
   return (
@@ -32,11 +36,19 @@ export default function Dashboard() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
+            <OrdersChart />
+            <ReturningCustomersCard />
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <MarginByCategoryChart />
+            <CategoryPerformanceRadar />
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
             <ProductsChart />
             <CustomersChart />
           </div>
-
-          {/* Conversion and Traffic charts removed */}
 
           <div className="grid gap-6 md:grid-cols-2">
             <TopProductsChart />

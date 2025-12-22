@@ -40,10 +40,10 @@ export function RevenueChart() {
         <div className="flex items-start justify-between w-full">
           <div>
             <CardTitle>Ingresos por Categoría</CardTitle>
-            <CardDescription>Comparación de ingresos vs costos por categoría</CardDescription>
+            <CardDescription>Ingresos (últimos 30 días)</CardDescription>
           </div>
           <ChartInfo title="Ingresos por Categoría">
-            <p className="text-sm">Compara los ingresos y costos por categoría. Las barras muestran ingresos y costos asociados.</p>
+            <p className="text-sm">Muestra solo los ingresos por categoría en la ventana reciente.</p>
           </ChartInfo>
         </div>
       </CardHeader>

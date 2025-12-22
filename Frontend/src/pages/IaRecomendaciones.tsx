@@ -81,18 +81,22 @@ export default function IaRecomendacionesPage() {
 
         if (useFilters) {
             const cat = categories.find((c) => c.id === selectedCategory)
-            if (cat?.id && cat.id !== "ALL_CAT") payload.category = cat.id
-            if (selectedProduct && !Number.isNaN(Number(selectedProduct))) {
-                payload.product_ids = [Number(selectedProduct)]
-                payload.limit = 1
+            if (cat?.id && cat.id !== "ALL_CAT") {
+                payload.category = cat.id
+                if (selectedProduct && !Number.isNaN(Number(selectedProduct))) {
+                    payload.product_ids = [Number(selectedProduct)]
+                    payload.limit = 1
+                } else {
+                    const count = (productsByCategory[selectedCategory] ?? []).length
+                    payload.limit = Math.max(1, count || products.length || 20)
+                }
             } else {
-                // Si solo hay categoría, tomar cantidad de productos de esa categoría (cap 50)
-                const count = (productsByCategory[selectedCategory] ?? []).length
-                payload.limit = Math.max(1, Math.min(count || 20, 50))
+                // ALL_CAT: no limitar por categoría, tomar todos los productos
+                payload.limit = Math.max(1, products.length || 20)
             }
         } else {
-            // Sin filtros, usar total de productos conocidos (cap 50)
-            payload.limit = Math.max(1, Math.min(products.length || 20, 50))
+            // Sin filtros: tomar todos los productos cargados
+            payload.limit = Math.max(1, products.length || 20)
         }
 
         try {
@@ -185,7 +189,7 @@ export default function IaRecomendacionesPage() {
                 id: saved.id,
                 type: 'custom',
                 priority: prioridad === 'alta' ? 'high' : prioridad === 'baja' ? 'low' : 'medium',
-                title: `${lastAI?.card?.title || 'Recomendación'} · ${productLabel}`.slice(0, 80),
+                title: `${lastAI?.card?.title || 'Recomendación'} · ${productLabel}`,
                 description: descripcion,
                 impact: impacto,
                 icon: undefined,
@@ -214,7 +218,7 @@ export default function IaRecomendacionesPage() {
                     const meta = r.metadatos || {}
                     const cardTitle = meta?.card?.title || 'Recomendación'
                     const productLabel = meta?.product_label || ''
-                    const title = `${cardTitle}${productLabel ? ` · ${productLabel}` : ''}`.slice(0, 80)
+                    const title = `${cardTitle}${productLabel ? ` · ${productLabel}` : ''}`
                     return {
                         id: r.id,
                         type: 'custom',

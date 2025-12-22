@@ -3,40 +3,101 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, TrendingDown, ShoppingCart, Users, Package, DollarSign } from "lucide-react"
 import { useCurrency } from "@/hooks/use-currency"
+import { useEffect, useMemo, useState } from "react"
 
 export function MetricsCards() {
   const { formatPrice } = useCurrency()
+  const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api"
 
-  const metrics = [
-    {
-      title: "Ventas Totales",
-      value: formatPrice(45231.89),
-      change: "+20.1%",
-      trend: "up",
-      icon: DollarSign,
-    },
-    {
-      title: "Pedidos",
-      value: "1,234",
-      change: "+12.5%",
-      trend: "up",
-      icon: ShoppingCart,
-    },
-    {
-      title: "Clientes Activos",
-      value: "892",
-      change: "+8.2%",
-      trend: "up",
-      icon: Users,
-    },
-    {
-      title: "Productos Vendidos",
-      value: "3,456",
-      change: "-3.1%",
-      trend: "down",
-      icon: Package,
-    },
-  ]
+  const [salesMonthly, setSalesMonthly] = useState<any[]>([])
+  const [customersMonthly, setCustomersMonthly] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        setLoading(true)
+        const [resSales, resCustomers] = await Promise.all([
+          fetch(`${API_BASE}/metrics/sales-monthly/?months=2`),
+          fetch(`${API_BASE}/metrics/customers-monthly/?months=2`),
+        ])
+        if (mounted && resSales.ok) {
+          const data = await resSales.json()
+          if (Array.isArray(data)) setSalesMonthly(data)
+        }
+        if (mounted && resCustomers.ok) {
+          const data = await resCustomers.json()
+          if (Array.isArray(data)) setCustomersMonthly(data)
+        }
+      } catch (_) {
+        // silencioso
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    load()
+    return () => { mounted = false }
+  }, [API_BASE])
+
+  const currentPrev = useMemo(() => {
+    const curr = salesMonthly.length > 0 ? salesMonthly[salesMonthly.length - 1] : null
+    const prev = salesMonthly.length > 1 ? salesMonthly[salesMonthly.length - 2] : null
+    return { curr, prev }
+  }, [salesMonthly])
+
+  const currentPrevCustomers = useMemo(() => {
+    const curr = customersMonthly.length > 0 ? customersMonthly[customersMonthly.length - 1] : null
+    const prev = customersMonthly.length > 1 ? customersMonthly[customersMonthly.length - 2] : null
+    return { curr, prev }
+  }, [customersMonthly])
+
+  function pctChange(curr: number, prev: number): { text: string; trend: "up" | "down" } {
+    if (prev > 0) {
+      const delta = ((curr - prev) / prev) * 100
+      const text = `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`
+      return { text, trend: delta >= 0 ? "up" : "down" }
+    }
+    return { text: "—", trend: curr >= 0 ? "up" : "down" }
+  }
+
+  const nf = new Intl.NumberFormat()
+
+  const currMonthLabel = currentPrev.curr?.month ?? ""
+
+  const ventasTotales = (() => {
+    const curr = currentPrev.curr?.sales_sum ?? 0
+    const prev = currentPrev.prev?.sales_sum ?? 0
+    const change = pctChange(curr, prev)
+    return { title: "Ventas Totales", value: formatPrice(curr), change: change.text, trend: change.trend, icon: DollarSign, monthLabel: currMonthLabel }
+  })()
+
+  const pedidos = (() => {
+    const curr = currentPrev.curr?.sales_count ?? 0
+    const prev = currentPrev.prev?.sales_count ?? 0
+    const change = pctChange(curr, prev)
+    return { title: "Pedidos", value: nf.format(curr), change: change.text, trend: change.trend, icon: ShoppingCart, monthLabel: currMonthLabel }
+  })()
+
+  const clientesActivos = (() => {
+    const currN = currentPrevCustomers.curr ? Number(currentPrevCustomers.curr.nuevos || 0) : 0
+    const currR = currentPrevCustomers.curr ? Number(currentPrevCustomers.curr.recurrentes || 0) : 0
+    const prevN = currentPrevCustomers.prev ? Number(currentPrevCustomers.prev.nuevos || 0) : 0
+    const prevR = currentPrevCustomers.prev ? Number(currentPrevCustomers.prev.recurrentes || 0) : 0
+    const curr = currN + currR
+    const prev = prevN + prevR
+    const change = pctChange(curr, prev)
+    return { title: "Compradores del mes", value: nf.format(curr), change: change.text, trend: change.trend, icon: Users, monthLabel: currMonthLabel }
+  })()
+
+  const productosVendidos = (() => {
+    const curr = currentPrev.curr?.items_units ?? 0
+    const prev = currentPrev.prev?.items_units ?? 0
+    const change = pctChange(curr, prev)
+    return { title: "Productos Vendidos", value: nf.format(curr), change: change.text, trend: change.trend, icon: Package, monthLabel: currMonthLabel }
+  })()
+
+  const metrics = [ventasTotales, pedidos, clientesActivos, productosVendidos]
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -51,6 +112,7 @@ export function MetricsCards() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metric.value}</div>
+              <div className="text-xs text-muted-foreground">Este mes{metric.monthLabel ? ` (${metric.monthLabel})` : ""}</div>
               <div className="flex items-center gap-1 text-xs mt-1">
                 <TrendIcon
                   className="h-3 w-3"

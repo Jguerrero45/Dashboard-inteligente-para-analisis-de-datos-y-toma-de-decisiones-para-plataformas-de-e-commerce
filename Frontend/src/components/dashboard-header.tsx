@@ -21,7 +21,6 @@ const navigationItems = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Módulos", href: "/modulos" },
   { name: "Costos", href: "/costos" },
-  { name: "Predicciones", href: "/predicciones" },
   { name: "Ventas", href: "/ventas" },
   { name: "Clientes", href: "/clientes" },
   { name: "Productos", href: "/productos" },

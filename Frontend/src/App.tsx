@@ -4,7 +4,6 @@ import { Toaster } from "./components/ui/toaster"
 import ExchangeRateProvider from "./components/exchange-rate-provider"
 import Dashboard from "./pages/Dashboard"
 import Modulos from "./pages/Modulos"
-import Predicciones from "./pages/Predicciones"
 import Productos from "./pages/Productos"
 import Ventas from "./pages/Ventas"
 import Reportes from "./pages/Reportes"
@@ -32,7 +31,6 @@ function App() {
           <Route path="/" element={<AuthRedirect />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/modulos" element={<Modulos />} />
-          <Route path="/predicciones" element={<Predicciones />} />
           <Route path="/productos" element={<Productos />} />
           <Route path="/ventas" element={<Ventas />} />
           <Route path="/clientes" element={<Clientes />} />
