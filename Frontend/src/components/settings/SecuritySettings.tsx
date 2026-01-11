@@ -6,19 +6,14 @@ import { Button } from "@/components/ui/button"
 import { useState } from "react"
 
 export default function SecuritySettings() {
-    const [sessions] = useState([
-        { id: "s1", device: "Chrome — Linux", ip: "192.168.1.10", last: "Hoy, 09:12" },
-        { id: "s2", device: "iPhone 14", ip: "192.168.1.22", last: "Ayer, 21:03" },
-    ])
-
     return (
         <Card>
             <CardHeader>
                 <CardTitle>Seguridad</CardTitle>
-                <CardDescription>Contraseñas, 2FA, sesiones activas y políticas de acceso.</CardDescription>
+                <CardDescription>Cambia tu contraseña y revisa la política de seguridad.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="text-xs">Contraseña actual</label>
@@ -35,56 +30,17 @@ export default function SecuritySettings() {
                     </div>
 
                     <div>
-                        <p className="text-sm font-medium">Autenticación de dos factores (2FA)</p>
-                        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label className="flex items-center gap-3">
-                                <Input type="checkbox" />
-                                <span>Aplicación de autenticación (TOTP)</span>
-                            </label>
-                            <label className="flex items-center gap-3">
-                                <Input type="checkbox" />
-                                <span>SMS (no recomendado)</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div>
-                        <p className="text-sm font-medium">Sesiones activas</p>
-                        <ul className="mt-2 space-y-2 text-sm">
-                            {sessions.map((s) => (
-                                <li key={s.id} className="flex items-center justify-between">
-                                    <div>
-                                        <div className="font-medium">{s.device}</div>
-                                        <div className="text-xs text-muted-foreground">{s.ip} • {s.last}</div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button variant="ghost">Revocar</Button>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                        <div className="mt-3">
-                            <Button variant="outline">Revocar todas las sesiones</Button>
-                        </div>
-                    </div>
-
-                    <div>
                         <p className="text-sm font-medium">Política de contraseñas</p>
-                        <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-muted-foreground">
-                            <div>Longitud mínima: 8 caracteres</div>
-                            <div>Requerir números: Sí</div>
-                            <div>Expiración: 90 días</div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <p className="text-sm font-medium">Listas de IP / Acceso por red</p>
-                        <Input placeholder="Agregar IP permitida (ej. 203.0.113.5/32)" />
+                        <ul className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                            <li>Longitud mínima: 8 caracteres</li>
+                            <li>Debe incluir mayúsculas, minúsculas y números</li>
+                            <li>No reutilizar las últimas 5 contraseñas</li>
+                            <li>Expiración recomendada: 90 días</li>
+                        </ul>
                     </div>
 
                     <div className="flex gap-2">
-                        <Button>Guardar configuración de seguridad</Button>
-                        <Button variant="ghost">Restaurar por defecto</Button>
+                        <Button>Actualizar contraseña</Button>
                     </div>
                 </div>
             </CardContent>

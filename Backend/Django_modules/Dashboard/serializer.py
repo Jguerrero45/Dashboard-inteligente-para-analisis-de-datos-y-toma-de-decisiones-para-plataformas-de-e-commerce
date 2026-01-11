@@ -3,7 +3,7 @@ from rest_framework.validators import UniqueValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
-from .models import Clientes, Productos, Ventas, ModeloPrediccion, EntradaPrediccion, RecomendacionIA, VentaItem, Tasa
+from .models import Clientes, Productos, Ventas, ModeloPrediccion, EntradaPrediccion, RecomendacionIA, VentaItem, Tasa, UserProfile
 
 
 class Clientes_Serializers(serializers.ModelSerializer):
@@ -191,3 +191,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+
+
+class UserProfile_Serializers(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ('phone', 'company', 'address', 'avatar_path')

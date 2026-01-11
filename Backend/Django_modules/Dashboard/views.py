@@ -25,12 +25,15 @@ from django.template.loader import render_to_string
 import io
 import csv
 import datetime
+from django.core.files.storage import FileSystemStorage
+from django.conf import settings
 from .services.gemini_client import (
     generate_ai_recommendation,
     GeminiError,
     build_structured_output,
 )
 from django.db.models import DecimalField, ExpressionWrapper
+from .models import UserProfile
 
 MONTH_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May",
                    "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -209,7 +212,8 @@ class ProductsGrowthView(APIView):
             it.get('revenue') or 0) for it in items_prev}
 
         rows = []
-        product_names = {it['producto__id']                         : it['producto__nombre'] for it in items_now}
+        product_names = {it['producto__id']
+            : it['producto__nombre'] for it in items_now}
         product_names.update(
             {it['producto__id']: it['producto__nombre'] for it in items_prev})
 
@@ -827,26 +831,35 @@ class ExportCSVView(View, ExportMixin):
             from django.utils.dateparse import parse_datetime, parse_date
             df = params.get('date_from')
             dt = params.get('date_to')
-            if not df or not dt:
-                return JsonResponse({'detail': 'date_from and date_to are required for ventas'}, status=status.HTTP_400_BAD_REQUEST)
+            start = end = None
+            if df or dt:
+                if not (df and dt):
+                    return JsonResponse({'detail': 'date_from and date_to are required together when filtering ventas'}, status=status.HTTP_400_BAD_REQUEST)
 
-            start = parse_datetime(df) or parse_date(df)
-            end = parse_datetime(dt) or parse_date(dt)
-            if start is None or end is None:
-                return JsonResponse({'detail': 'Invalid date_from/date_to format. Use ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+                start = parse_datetime(df) or parse_date(df)
+                end = parse_datetime(dt) or parse_date(dt)
+                if start is None or end is None:
+                    return JsonResponse({'detail': 'Invalid date_from/date_to format. Use ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # If parsed dates are date objects, convert to datetimes at boundaries
-            import datetime as _dt
-            if isinstance(start, _dt.date) and not isinstance(start, _dt.datetime):
-                start = _dt.datetime.combine(start, _dt.time.min)
-            if isinstance(end, _dt.date) and not isinstance(end, _dt.datetime):
-                end = _dt.datetime.combine(end, _dt.time.max)
+                # If parsed dates are date objects, convert to datetimes at boundaries
+                import datetime as _dt
+                if isinstance(start, _dt.date) and not isinstance(start, _dt.datetime):
+                    start = _dt.datetime.combine(start, _dt.time.min)
+                if isinstance(end, _dt.date) and not isinstance(end, _dt.datetime):
+                    end = _dt.datetime.combine(end, _dt.time.max)
 
             from .models import Ventas
-            qs = Ventas.objects.select_related('cliente').prefetch_related(
-                'items__producto').filter(fecha__gte=start, fecha__lte=end).order_by('-fecha')
+            qs = Ventas.objects.select_related(
+                'cliente').prefetch_related('items__producto')
+            if start and end:
+                qs = qs.filter(fecha__gte=start, fecha__lte=end)
+            qs = qs.order_by('-fecha')
+            max_items = qs.annotate(items_cnt=Count('items')).aggregate(
+                max=Max('items_cnt'))['max'] or 0
+            extra_product_fields = [f'producto_{i}'
+                                    for i in range(1, max_items + 1)]
             fields = ['id', 'fecha', 'cliente_id', 'cliente_nombre',
-                      'precio_total', 'metodo_compra', 'estado', 'items_count']
+                      'precio_total', 'metodo_compra', 'estado', *extra_product_fields]
             entity_label = 'ventas'
         else:
             return JsonResponse({'detail': 'tipo no soportado'}, status=status.HTTP_400_BAD_REQUEST)
@@ -860,6 +873,10 @@ class ExportCSVView(View, ExportMixin):
 
         for obj in qs:
             row = []
+            # cache items/product names once per venta row to avoid repeated loops
+            items_cache = None
+            product_names = None
+
             for fname in fields:
                 # support computed ventas fields
                 if entity_label == 'ventas':
@@ -868,11 +885,21 @@ class ExportCSVView(View, ExportMixin):
                     elif fname == 'cliente_nombre':
                         cli = getattr(obj, 'cliente', None)
                         val = f"{getattr(cli, 'nombre', '')} {getattr(cli, 'apellido', '')}" if cli else ''
-                    elif fname == 'items_count':
+                    elif fname.startswith('producto_'):
+                        if product_names is None:
+                            if items_cache is None:
+                                try:
+                                    items_cache = list(obj.items.all())
+                                except Exception:
+                                    items_cache = []
+                            product_names = [getattr(getattr(i, 'producto', None), 'nombre', '')
+                                             for i in items_cache]
                         try:
-                            val = obj.items.count()
+                            idx = int(fname.rsplit('_', 1)[1]) - 1
                         except Exception:
-                            val = ''
+                            idx = -1
+                        val = product_names[idx] if 0 <= idx < len(
+                            product_names) else ''
                     else:
                         val = getattr(obj, fname, '')
                 else:
@@ -909,30 +936,251 @@ class ExportPDFView(View, ExportMixin):
             template_name = 'report_clients.html'
             entity_label = 'clientes'
 
+        elif tipo == 'graficas':
+            # Construir datos estáticos para las gráficas (sin iframe)
+            from django.utils import timezone as _tz
+            from datetime import timedelta as _td
+            from .models import Ventas, VentaItem, Productos, Clientes
+
+            # Ventana: últimos 6 meses para series mensuales
+            today = _tz.now().date()
+            year = today.year
+            month = today.month
+            months_list = []
+            for i in range(6 - 1, -1, -1):
+                m = month - i
+                y = year
+                while m <= 0:
+                    m += 12
+                    y -= 1
+                months_list.append((y, m))
+
+            monthly = []
+            for y, m in months_list:
+                start = _tz.datetime(year=y, month=m, day=1).date()
+                if m == 12:
+                    end = _tz.datetime(year=y + 1, month=1, day=1).date()
+                else:
+                    end = _tz.datetime(year=y, month=m + 1, day=1).date()
+
+                qs_sales = Ventas.objects.filter(
+                    fecha__gte=start,
+                    fecha__lt=end,
+                    estado=Ventas.ESTADO_COMPLETADA,
+                )
+
+                sales_sum = qs_sales.aggregate(
+                    total=Sum('precio_total')).get('total') or 0
+                sales_count = qs_sales.count()
+
+                qs_items = VentaItem.objects.filter(venta__in=qs_sales)
+                items_revenue = qs_items.aggregate(
+                    total=Sum('precio_total')).get('total') or 0
+                items_units = qs_items.aggregate(
+                    total=Sum('cantidad')).get('total') or 0
+
+                label = MONTH_LABELS_ES[m - 1]
+                monthly.append({
+                    'month': label,
+                    'sales_sum': float(sales_sum),
+                    'sales_count': sales_count,
+                    'items_revenue': float(items_revenue),
+                    'items_units': int(items_units or 0),
+                })
+
+            # Normalizar valores para usar en barras (0-100)
+            max_sales_sum = max((it['sales_sum'] for it in monthly), default=0)
+            max_sales_count = max((it['sales_count']
+                                  for it in monthly), default=0)
+            max_items_units = max((it['items_units']
+                                  for it in monthly), default=0)
+            for it in monthly:
+                it['sales_sum_pct'] = int(
+                    ((it['sales_sum'] / max_sales_sum) * 100) if max_sales_sum > 0 else 0)
+                it['sales_count_pct'] = int(
+                    ((it['sales_count'] / max_sales_count) * 100) if max_sales_count > 0 else 0)
+                it['items_units_pct'] = int(
+                    ((it['items_units'] / max_items_units) * 100) if max_items_units > 0 else 0)
+
+            # Ingresos y margen por categoría en últimos 30 días
+            start_30 = _tz.now() - _td(days=30)
+            qs_cat_items = VentaItem.objects.select_related('venta', 'producto').filter(
+                venta__estado=Ventas.ESTADO_COMPLETADA,
+                venta__fecha__gte=start_30,
+                venta__fecha__lte=_tz.now(),
+            )
+            cost_expr = ExpressionWrapper(
+                F('cantidad') * F('producto__costo'), output_field=DecimalField(max_digits=14, decimal_places=2)
+            )
+            agg_cat = (
+                qs_cat_items.values(cat=F('producto__categoria'))
+                .annotate(revenue=Sum('precio_total'), cost=Sum(cost_expr))
+                .order_by('-revenue')
+            )
+            categories = []
+            for row in agg_cat:
+                revenue = float(row.get('revenue') or 0)
+                cost = float(row.get('cost') or 0)
+                margin_pct = ((revenue - cost) / revenue *
+                              100) if revenue > 0 else 0.0
+                categories.append({
+                    'category': row.get('cat') or 'Sin categoría',
+                    'revenue': revenue,
+                    'cost': cost,
+                    'margin_pct': round(margin_pct, 1),
+                })
+
+            # Porcentaje relativo de ingresos por categoría (0-100)
+            max_rev = max((c['revenue'] for c in categories), default=0)
+            for c in categories:
+                c['revenue_pct'] = int(
+                    ((c['revenue'] / max_rev) * 100) if max_rev > 0 else 0)
+
+            # Top productos por unidades en últimos 30 días
+            qs_tp_items = VentaItem.objects.select_related('producto', 'venta').filter(
+                venta__estado=Ventas.ESTADO_COMPLETADA,
+                venta__fecha__gte=start_30,
+                venta__fecha__lte=_tz.now(),
+            ).values(name=F('producto__nombre')).annotate(units=Sum('cantidad')).order_by('-units')[:10]
+            top_products = [{'producto': r['name'], 'unidades': int(
+                r['units'] or 0)} for r in qs_tp_items]
+
+            # Heatmap del mes actual (intensidad por día)
+            import calendar as _cal
+            start_month = _tz.datetime(year=year, month=month, day=1)
+            if month == 12:
+                next_month = _tz.datetime(year=year + 1, month=1, day=1)
+            else:
+                next_month = _tz.datetime(year=year, month=month + 1, day=1)
+            last_day = _cal.monthrange(year, month)[1]
+            first_wd = start_month.weekday()
+            weeks = (first_wd + last_day + 6) // 7
+            weeks = max(4, min(6, weeks))
+            day_nums = [[0 for _ in range(7)] for _ in range(weeks)]
+            for w in range(weeks):
+                for wd in range(7):
+                    pos = w * 7 + wd
+                    dn = pos - first_wd + 1
+                    if 1 <= dn <= last_day:
+                        day_nums[w][wd] = dn
+            items_qs = VentaItem.objects.select_related('venta').filter(
+                venta__estado=Ventas.ESTADO_COMPLETADA, venta__fecha__gte=start_month, venta__fecha__lt=next_month)
+            from django.db.models.functions import TruncDate
+            items_by_date = (
+                items_qs.annotate(d=TruncDate('venta__fecha'))
+                .values('d')
+                .annotate(revenue=Sum('precio_total'))
+            )
+            rev_map = {}
+            for it in items_by_date:
+                dt = it['d']
+                if dt is None:
+                    continue
+                rev_map[dt.day] = float(it.get('revenue') or 0)
+            revenue_matrix = [[0.0 for _ in range(7)] for _ in range(weeks)]
+            for w in range(weeks):
+                for wd in range(7):
+                    dn = day_nums[w][wd]
+                    if dn:
+                        revenue_matrix[w][wd] = float(rev_map.get(dn, 0))
+            maxi = max((revenue_matrix[r][c] for r in range(
+                weeks) for c in range(7)), default=0)
+            if maxi <= 0:
+                heatmap = [[0 for _ in range(7)] for _ in range(weeks)]
+            else:
+                heatmap = [[int((revenue_matrix[r][c] / maxi) * 100)
+                            for c in range(7)] for r in range(weeks)]
+
+            # Métricas resumen
+            total_products = Productos.objects.count()
+            total_customers = Clientes.objects.count()
+            total_sales_30 = Ventas.objects.filter(
+                estado=Ventas.ESTADO_COMPLETADA, fecha__gte=start_30, fecha__lte=_tz.now()).aggregate(total=Sum('precio_total')).get('total') or 0
+
+            context = {
+                'now': datetime.datetime.utcnow(),
+                'monthly': monthly,
+                'categories': categories,
+                'top_products': top_products,
+                'heatmap': heatmap,
+                'day_numbers': day_nums,
+                'month_label': f"{year:04d}-{month:02d}",
+                'summary': {
+                    'total_products': total_products,
+                    'total_customers': total_customers,
+                    'total_sales_30': float(total_sales_30),
+                },
+            }
+            template_name = 'report_graphs.html'
+            entity_label = 'graficas'
+
         elif tipo == 'ventas':
             params = getattr(request, 'GET', None) or getattr(
                 request, 'query_params', None) or {}
             from django.utils.dateparse import parse_datetime, parse_date
             df = params.get('date_from')
             dt = params.get('date_to')
-            if not df or not dt:
-                return JsonResponse({'detail': 'date_from and date_to are required for ventas'}, status=status.HTTP_400_BAD_REQUEST)
+            start = end = None
+            if df or dt:
+                if not (df and dt):
+                    return JsonResponse({'detail': 'date_from and date_to are required together when filtering ventas'}, status=status.HTTP_400_BAD_REQUEST)
 
-            start = parse_datetime(df) or parse_date(df)
-            end = parse_datetime(dt) or parse_date(dt)
-            if start is None or end is None:
-                return JsonResponse({'detail': 'Invalid date_from/date_to format. Use ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+                start = parse_datetime(df) or parse_date(df)
+                end = parse_datetime(dt) or parse_date(dt)
+                if start is None or end is None:
+                    return JsonResponse({'detail': 'Invalid date_from/date_to format. Use ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            import datetime as _dt
-            if isinstance(start, _dt.date) and not isinstance(start, _dt.datetime):
-                start = _dt.datetime.combine(start, _dt.time.min)
-            if isinstance(end, _dt.date) and not isinstance(end, _dt.datetime):
-                end = _dt.datetime.combine(end, _dt.time.max)
+                import datetime as _dt
+                if isinstance(start, _dt.date) and not isinstance(start, _dt.datetime):
+                    start = _dt.datetime.combine(start, _dt.time.min)
+                if isinstance(end, _dt.date) and not isinstance(end, _dt.datetime):
+                    end = _dt.datetime.combine(end, _dt.time.max)
 
             from .models import Ventas
-            qs = Ventas.objects.select_related('cliente').prefetch_related(
-                'items__producto').filter(fecha__gte=start, fecha__lte=end).order_by('-fecha')
-            context = {'sales': qs, 'now': datetime.datetime.utcnow()}
+            qs = Ventas.objects.select_related(
+                'cliente').prefetch_related('items__producto')
+            if start and end:
+                qs = qs.filter(fecha__gte=start, fecha__lte=end)
+            qs = qs.order_by('-fecha')
+            max_items = qs.annotate(items_cnt=Count('items')).aggregate(
+                max=Max('items_cnt'))['max'] or 0
+            product_headers = [
+                f"Producto {i}" for i in range(1, max_items + 1)]
+
+            sales_rows = []
+            for v in qs:
+                try:
+                    items_list = list(v.items.all())
+                except Exception:
+                    items_list = []
+
+                product_names = [getattr(getattr(it, 'producto', None), 'nombre', '')
+                                 for it in items_list]
+                # pad to max_items so table has consistent columns
+                if max_items > len(product_names):
+                    product_names.extend(
+                        [''] * (max_items - len(product_names)))
+
+                cliente_obj = getattr(v, 'cliente', None)
+                cliente_nombre = f"{getattr(cliente_obj, 'nombre', '')} {getattr(cliente_obj, 'apellido', '')}".strip(
+                )
+
+                sales_rows.append({
+                    'id': v.id,
+                    'fecha': v.fecha,
+                    'cliente': cliente_nombre or '-',
+                    'precio_total': v.precio_total,
+                    'metodo_compra': v.metodo_compra,
+                    'estado': v.estado,
+                    'productos': product_names,
+                })
+
+            context = {
+                'sales': sales_rows,
+                'product_headers': product_headers,
+                'total_columns': 6 + len(product_headers),
+                'now': datetime.datetime.utcnow(),
+            }
             template_name = 'report_sales.html'
             entity_label = 'ventas'
         else:
@@ -946,6 +1194,8 @@ class ExportPDFView(View, ExportMixin):
             import pdfkit
             options = {
                 'enable-local-file-access': None,
+                'enable-javascript': None,
+                'javascript-delay': '4000',
             }
             pdf = pdfkit.from_string(html, False, options=options)
             resp = HttpResponse(pdf, content_type='application/pdf')
@@ -1110,3 +1360,66 @@ class StructuredByCategoryView(APIView):
             days = 30
         data = build_structured_output('category', metric=metric, days=days)
         return Response(data)
+
+
+class ProfileView(APIView):
+    """Obtiene/actualiza el perfil del usuario autenticado."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        avatar_url = None
+        if profile.avatar_path:
+            avatar_url = f"{settings.MEDIA_URL}{profile.avatar_path}"
+        return Response({
+            'username': user.username,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'email': user.email,
+            'phone': profile.phone,
+            'company': profile.company,
+            'address': profile.address,
+            'avatar_url': avatar_url,
+        })
+
+    def put(self, request):
+        user = request.user
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        data = request.data or {}
+        user.first_name = data.get('first_name', user.first_name)
+        user.last_name = data.get('last_name', user.last_name)
+        user.email = data.get('email', user.email)
+        profile.phone = data.get('phone', profile.phone)
+        profile.company = data.get('company', profile.company)
+        profile.address = data.get('address', profile.address)
+        user.save()
+        profile.save()
+        avatar_url = f"{settings.MEDIA_URL}{profile.avatar_path}" if profile.avatar_path else None
+        return Response({'ok': True, 'avatar_url': avatar_url})
+
+
+class ProfileAvatarUploadView(APIView):
+    """Sube el avatar del usuario y actualiza el perfil."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        file = request.FILES.get('avatar')
+        if not file:
+            return Response({'detail': 'Archivo "avatar" no recibido'}, status=status.HTTP_400_BAD_REQUEST)
+        # asegurar carpeta avatars dentro de MEDIA_ROOT
+        try:
+            (settings.MEDIA_ROOT / 'avatars').mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        fs = FileSystemStorage(location=str(settings.MEDIA_ROOT / 'avatars'))
+        import os as _os
+        _name, ext = _os.path.splitext(file.name)
+        filename = f"user_{user.id}{ext or '.jpg'}"
+        saved_name = fs.save(filename, file)
+        rel_path = f"avatars/{saved_name}"
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile.avatar_path = rel_path
+        profile.save(update_fields=['avatar_path'])
+        return Response({'avatar_url': f"{settings.MEDIA_URL}{rel_path}"})

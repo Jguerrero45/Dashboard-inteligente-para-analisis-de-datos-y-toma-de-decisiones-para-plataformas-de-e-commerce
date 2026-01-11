@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Menu, Moon, Sun, DollarSign, User, LogOut } from "lucide-react"
+import { Menu, Moon, Sun, Coins, User, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -69,7 +69,7 @@ export function DashboardHeader() {
             onClick={toggleCurrency}
             className="hidden sm:flex items-center gap-2 bg-transparent"
           >
-            <DollarSign className="h-4 w-4" />
+            <Coins className="h-4 w-4" />
             <span className="font-semibold">{currency === "USD" ? "USD" : "Bs"}</span>
             {/* Show current exchange rate when available */}
             <span className="hidden sm:inline-block text-xs text-muted-foreground ml-2">{exchangeRate ? `1 USD ≈ ${new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(exchangeRate)} Bs` : '—'}</span>
@@ -136,7 +136,7 @@ export function DashboardHeader() {
                   onClick={toggleCurrency}
                   className="flex items-center gap-2 justify-center bg-transparent"
                 >
-                  <DollarSign className="h-4 w-4" />
+                  <Coins className="h-4 w-4" />
                   <span className="font-semibold">{currency === "USD" ? "Dólares (USD)" : "Bolívares (Bs)"}</span>
                 </Button>
                 {navigationItems.map((item) => (

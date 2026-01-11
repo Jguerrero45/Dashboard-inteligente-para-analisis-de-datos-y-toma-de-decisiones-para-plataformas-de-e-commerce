@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
-  FileSpreadsheet,
   Download,
   CalendarIcon,
   TrendingUp,
@@ -16,11 +15,10 @@ import {
   Package,
   Users,
   FileText,
-  BarChart3,
+
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { useCurrency } from "@/hooks/use-currency"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
 
@@ -47,10 +45,10 @@ const tiposReporte = [
     icon: Users,
     brand: 3,
   },
+
 ]
 
 export default function ReportesPage() {
-  const { currency } = useCurrency()
   const [tipoReporte, setTipoReporte] = useState("ventas")
   const [formato, setFormato] = useState("csv")
   const [productCount, setProductCount] = useState<string>("10")
@@ -63,11 +61,12 @@ export default function ReportesPage() {
     setGenerando(true)
     try {
       if (!(tipoReporte === 'productos' || tipoReporte === 'ventas' || tipoReporte === 'clientes')) {
-        alert('Por ahora solo se soporta exportar los reportes de productos y ventas desde esta interfaz.')
+        alert('Tipo de reporte no soportado.')
         return
       }
+      const formatoDestino = formato
 
-      if (formato === "pdf") {
+      if (formatoDestino === "pdf") {
         const params = new URLSearchParams()
         params.set("months", "12")
         params.set("top", "5")
@@ -76,6 +75,7 @@ export default function ReportesPage() {
         params.set('count', productCount || '10')
         if (dateFrom) params.set("date_from", dateFrom.toISOString())
         if (dateTo) params.set("date_to", dateTo.toISOString())
+
 
         const res = await fetch(`/api/export/pdf/?${params.toString()}`, {
           method: "GET",
@@ -134,6 +134,7 @@ export default function ReportesPage() {
         if (dateFrom) params.set('date_from', dateFrom.toISOString())
         if (dateTo) params.set('date_to', dateTo.toISOString())
 
+
         const res = await fetch(`/api/export/csv/?${params.toString()}`, {
           method: 'GET',
           headers: {
@@ -175,26 +176,7 @@ export default function ReportesPage() {
   }
 
   // Estadísticas de reportes
-  const estadisticas = [
-    {
-      titulo: "Reportes Generados",
-      valor: "247",
-      descripcion: "Este mes",
-      icon: FileText,
-    },
-    {
-      titulo: "Último Reporte",
-      valor: "Hace 2 horas",
-      descripcion: "Reporte de ventas",
-      icon: FileSpreadsheet,
-    },
-    {
-      titulo: "Formato Más Usado",
-      valor: "CSV",
-      descripcion: "85% de exportaciones",
-      icon: Download,
-    },
-  ]
+
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -224,7 +206,10 @@ export default function ReportesPage() {
                       key={tipo.id}
                       className={`cursor-pointer transition-all hover:shadow-md ${tipoReporte === tipo.id ? "ring-2 ring-primary" : ""
                         }`}
-                      onClick={() => setTipoReporte(tipo.id)}
+                      onClick={() => {
+                        setTipoReporte(tipo.id)
+
+                      }}
                     >
                       <CardHeader>
                         <div className="flex items-center gap-3">
@@ -265,11 +250,11 @@ export default function ReportesPage() {
                     <label className="text-sm text-muted-foreground mb-2 block">Fecha Desde</label>
                     <Popover>
                       <PopoverTrigger asChild>
-                          <Button variant="outline"
-                            className={`w-full justify-start text-left font-normal bg-transparent ${tipoReporte !== 'ventas' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            disabled={tipoReporte !== 'ventas'}
-                            title={tipoReporte !== 'ventas' ? 'Fechas deshabilitadas en esta vista' : ''}
-                          >
+                        <Button variant="outline"
+                          className={`w-full justify-start text-left font-normal bg-transparent ${tipoReporte !== 'ventas' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          disabled={tipoReporte !== 'ventas'}
+                          title={tipoReporte !== 'ventas' ? 'Fechas deshabilitadas en esta vista' : ''}
+                        >
                           <CalendarIcon className="mr-2 h-4 w-4" />
                           {dateFrom ? format(dateFrom, "PPP", { locale: es }) : "Seleccionar fecha"}
                         </Button>
@@ -282,16 +267,16 @@ export default function ReportesPage() {
                   <div className="flex-1">
                     <label className="text-sm text-muted-foreground mb-2 block">Fecha Hasta</label>
                     <Popover>
-                    <PopoverTrigger asChild>
-                            <Button variant="outline"
-                              className={`w-full justify-start text-left font-normal bg-transparent ${tipoReporte !== 'ventas' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              disabled={tipoReporte !== 'ventas'}
-                              title={tipoReporte !== 'ventas' ? 'Fechas deshabilitadas en esta vista' : ''}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateTo ? format(dateTo, "PPP", { locale: es }) : "Seleccionar fecha"}
-                      </Button>
-                    </PopoverTrigger>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline"
+                          className={`w-full justify-start text-left font-normal bg-transparent ${tipoReporte !== 'ventas' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          disabled={tipoReporte !== 'ventas'}
+                          title={tipoReporte !== 'ventas' ? 'Fechas deshabilitadas en esta vista' : ''}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateTo ? format(dateTo, "PPP", { locale: es }) : "Seleccionar fecha"}
+                        </Button>
+                      </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
                         <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus />
                       </PopoverContent>
@@ -323,7 +308,10 @@ export default function ReportesPage() {
               {/* Formato de Exportación */}
               <div>
                 <h3 className="text-sm font-medium mb-3">Formato de Exportación</h3>
-                <Select value={formato} onValueChange={setFormato}>
+                <Select
+                  value={formato}
+                  onValueChange={(v) => { setFormato(v) }}
+                >
                   <SelectTrigger className="w-full md:w-[300px]">
                     <SelectValue placeholder="Seleccionar formato" />
                   </SelectTrigger>
@@ -349,8 +337,7 @@ export default function ReportesPage() {
                 <div className="flex items-center gap-2 text-sm">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">
-                    Los valores se exportarán en: {" "}
-                    <strong>{currency === "USD" ? "Dólares (USD)" : "Bolívares (Bs)"}</strong>
+                    Las exportaciones siempre se generan en Dólares (USD).
                   </span>
                 </div>
               </div>
@@ -362,14 +349,14 @@ export default function ReportesPage() {
                     dateFrom && dateTo ? (
                       `Período: ${format(dateFrom, "dd/MM/yyyy")} - ${format(dateTo, "dd/MM/yyyy")}`
                     ) : (
-                      <span className="text-red-600 font-bold">Selecciona un rango de fechas para continuar</span>
+                      <span className="text-muted-foreground">Sin filtro de fechas (todas las ventas)</span>
                     )
                   ) : null}
                 </div>
                 <Button
                   size="lg"
                   onClick={generarReporte}
-                  disabled={(tipoReporte === 'ventas' && (!dateFrom || !dateTo)) || generando}
+                  disabled={generando}
                   className="w-full sm:w-auto"
                 >
                   <Download className="mr-2 h-4 w-4" />

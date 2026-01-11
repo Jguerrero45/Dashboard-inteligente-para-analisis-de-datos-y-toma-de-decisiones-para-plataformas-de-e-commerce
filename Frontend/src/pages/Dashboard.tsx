@@ -14,9 +14,10 @@ import { MarginByCategoryChart } from "@/components/charts/margin-by-category-ch
 import { CategoryPerformanceRadar } from "@/components/charts/category-performance-radar"
 
 export default function Dashboard() {
+  const embed = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "1"
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <DashboardHeader />
+      {!embed && <DashboardHeader />}
 
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="space-y-8">
@@ -57,7 +58,7 @@ export default function Dashboard() {
         </div>
       </main>
 
-      <DashboardFooter />
+      {!embed && <DashboardFooter />}
     </div>
   )
 }

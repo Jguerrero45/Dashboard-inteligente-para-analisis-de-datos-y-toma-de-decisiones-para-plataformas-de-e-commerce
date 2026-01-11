@@ -28,8 +28,6 @@ urlpatterns = [
          views.SalesMonthlyView.as_view(), name='sales-monthly'),
     path('metrics/revenue-by-category/',
          views.RevenueByCategoryView.as_view(), name='revenue-by-category'),
-    path('metrics/quantity-by-category/',
-         views.QuantityByCategoryView.as_view(), name='quantity-by-category'),
     path('metrics/top-products/',
          views.TopProductsView.as_view(), name='top-products'),
     path('metrics/customers-monthly/',
@@ -54,4 +52,8 @@ urlpatterns = [
     # Recomendaciones IA (Gemini)
     path('ai/recommendations/',
          views.AIRecommendationsView.as_view(), name='ai-recommendations'),
+    # Perfil de usuario (autenticado)
+    path('profile/', views.ProfileView.as_view(), name='profile'),
+    path('profile/avatar/', views.ProfileAvatarUploadView.as_view(),
+         name='profile-avatar'),
 ]

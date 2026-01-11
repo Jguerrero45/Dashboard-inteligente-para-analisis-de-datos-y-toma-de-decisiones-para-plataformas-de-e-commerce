@@ -5,9 +5,6 @@ import { DashboardFooter } from "@/components/dashboard-footer"
 import SettingsLayout from "@/components/settings/SettingsLayout"
 import AccountSettings from "@/components/settings/AccountSettings"
 import SecuritySettings from "@/components/settings/SecuritySettings"
-import NotificationsSettings from "@/components/settings/NotificationsSettings"
-import IntegrationsSettings from "@/components/settings/IntegrationsSettings"
-import TeamSettings from "@/components/settings/TeamSettings"
 
 export default function Perfil() {
     return (
@@ -17,17 +14,14 @@ export default function Perfil() {
             <main className="flex-1 container mx-auto px-4 py-8">
                 <div className="space-y-6">
                     <div>
-                        <h1 className="text-3xl font-bold">Ajustes</h1>
-                        <p className="text-muted-foreground">Configura tu cuenta y preferencias del dashboard</p>
+                        <h1 className="text-3xl font-bold tracking-tight">Cuenta y seguridad</h1>
+                        <p className="text-muted-foreground">Administra los datos de tu cuenta y la seguridad del acceso</p>
                     </div>
 
                     <SettingsLayout
                         sections={[
                             { key: "account", label: "Cuenta", content: <AccountSettings /> },
                             { key: "security", label: "Seguridad", content: <SecuritySettings /> },
-                            { key: "notifications", label: "Notificaciones", content: <NotificationsSettings /> },
-                            { key: "integrations", label: "Integraciones", content: <IntegrationsSettings /> },
-                            { key: "team", label: "Equipo", content: <TeamSettings /> },
                         ]}
                     />
                 </div>

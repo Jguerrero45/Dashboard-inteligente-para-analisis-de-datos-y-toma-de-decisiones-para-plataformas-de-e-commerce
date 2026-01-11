@@ -335,3 +335,20 @@ class Tasa(models.Model):
 
     class Meta:
         ordering = ['-fecha']
+
+
+class UserProfile(models.Model):
+    """Perfil de usuario extendido para datos adicionales y avatar."""
+    user = models.OneToOneField(
+        get_user_model(), on_delete=models.CASCADE, related_name='profile')
+    phone = models.CharField(max_length=50, blank=True)
+    company = models.CharField(max_length=120, blank=True)
+    address = models.CharField(max_length=255, blank=True)
+    avatar_path = models.CharField(
+        max_length=255, blank=True, help_text='Ruta relativa en MEDIA_ROOT')
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Perfil {self.user_id}"
