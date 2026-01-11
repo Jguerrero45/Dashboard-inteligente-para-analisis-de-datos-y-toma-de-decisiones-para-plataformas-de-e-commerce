@@ -15,9 +15,11 @@ pdfkit==1.0.0
 # Note: wkhtmltopdf binary is required on the system for PDF generation
 
 # Browser printing (Chromium via Playwright)
-playwright==1.47.0
+# Nota: Desactivado temporalmente para evitar la dependencia transitoria "greenlet"
+# en Python 3.13. Vuelva a activarlo solo si necesita impresión vía navegador.
+# playwright==1.47.0
 
-# IA / Gemini
-google-generativeai==0.8.3
+# IA / Gemini (nuevo SDK)
+google-genai>=0.2.0
 python-dotenv==1.0.1
  

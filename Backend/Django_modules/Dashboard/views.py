@@ -156,24 +156,52 @@ class AIRecommendationsView(APIView):
     """
 
     def post(self, request):
+        """Genera una recomendación IA usando Gemini con los filtros recibidos.
+
+        Body JSON (opcional):
+        {
+          "product_ids": [int,...],
+          "category": str,
+          "limit": int
+        }
+        """
         data = request.data or {}
-        returning_prev = returning_prev_qs.count()
-        rate_prev = 0.0
-        total_prev = buyers_prev_qs.count()
-        if total_prev > 0:
-            rate_prev = round((returning_prev / total_prev) * 100, 2)
 
-        projected_rate = rate + (rate - rate_prev)
-        projected_rate = max(0.0, min(100.0, projected_rate))
+        # Limpiar/normalizar parámetros de entrada
+        product_ids = data.get('product_ids')
+        if isinstance(product_ids, (list, tuple)):
+            try:
+                product_ids = [int(pid) for pid in product_ids]
+            except Exception:
+                product_ids = None
+        else:
+            product_ids = None
 
-        return Response({
-            'rate': rate,
-            'total_buyers': total_buyers,
-            'returning_buyers': returning_buyers,
-            'rate_prev': rate_prev,
-            'projected_rate': projected_rate,
-            'days': days,
-        })
+        category = data.get('category')
+        try:
+            category = str(category).strip() if category is not None else None
+        except Exception:
+            category = None
+
+        limit = data.get('limit')
+        try:
+            limit = int(limit) if limit is not None else None
+        except Exception:
+            limit = None
+
+        # Invocar servicio Gemini
+        try:
+            payload = {
+                'product_ids': product_ids,
+                'category': category,
+                'limit': limit,
+            }
+            result = generate_ai_recommendation(**payload)
+            return Response(result, status=status.HTTP_200_OK)
+        except GeminiError as ge:
+            return Response({'error': str(ge)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({'error': f'Error al generar recomendación: {exc}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ProductsGrowthView(APIView):

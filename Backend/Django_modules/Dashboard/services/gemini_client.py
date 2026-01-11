@@ -2,7 +2,7 @@ import os
 from datetime import timedelta
 from typing import Iterable, List, Optional, Tuple, Dict
 
-import google.generativeai as genai
+from google import genai
 import json
 from decimal import Decimal
 from django.utils import timezone
@@ -22,21 +22,12 @@ MONTH_LABELS_ES = [
 ]
 
 
-def _configure_model() -> genai.GenerativeModel:
+def _get_client() -> genai.Client:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise GeminiError("Falta la variable de entorno GEMINI_API_KEY")
-
-    genai.configure(api_key=api_key)
-    return genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
-        generation_config={
-            "temperature": 0.25,
-            "max_output_tokens": 180,  # Respuesta muy breve
-            "top_p": 0.9,
-            "response_mime_type": "application/json",
-        },
-    )
+    # Nuevo SDK
+    return genai.Client(api_key=api_key)
 
 
 def _collect_product_context(
@@ -393,7 +384,8 @@ def generate_ai_recommendation(
             "No se encontraron productos para generar la recomendación")
 
     # Construir prompt y pedir a Gemini que elija recomendación basada en datos
-    model = _configure_model()
+    client = _get_client()
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
     prompt = _build_prompt(products_ctx)
 
     def _extract_first_json_block(txt: str) -> str | None:
@@ -415,10 +407,84 @@ def generate_ai_recommendation(
         return None
 
     try:
-        result = model.generate_content(prompt)
-        text = (result.text or "").strip()
+        result = client.models.generate_content(
+            model=model_name, contents=prompt)
+        text = (getattr(result, "text", "") or "").strip()
     except Exception as exc:  # noqa: BLE001
-        raise GeminiError(f"Error al invocar Gemini: {exc}")
+        # Si cuota/429 u otros errores, hacer fallback determinista para no romper la UX
+        msg = str(exc)
+        if "Quota" in msg or "429" in msg or "rate limit" in msg.lower():
+            best_card, _options = _evaluate_options(products_ctx)
+            pf = best_card.get("product_focus")
+            out = {
+                "title": best_card.get("title"),
+                "type": best_card.get("type"),
+                "change_pct": best_card.get("change_pct"),
+                "description": best_card.get("description"),
+                "impact": best_card.get("impact"),
+                "product_id": pf.get("id") if pf else None,
+                "product_name": pf.get("nombre") if pf else "",
+            }
+            # Continuar con el flujo normal usando datos de fallback
+            data = out
+            reco_type = (data.get("type") or "").strip()
+            marketing_priority, stock_priority = _compute_priorities(
+                products_ctx)
+
+            def _derive_priority(rt: str) -> str:
+                if rt in {"pricing_increase", "pricing_decrease"}:
+                    return marketing_priority
+                if rt in {"promo_campaign", "discount", "bundle"}:
+                    return "media" if marketing_priority == "alta" else marketing_priority
+                return marketing_priority
+
+            derived_priority = _derive_priority(reco_type)
+            prio_rank = {"baja": 0, "media": 1, "alta": 2}
+            best_context_priority = max([derived_priority, stock_priority], key=lambda p: prio_rank.get(
+                p, 0)) if stock_priority else derived_priority
+            priority = best_context_priority
+
+            pr_cap = priority.capitalize()
+            description = (data.get("description") or "").strip()
+            impact = (data.get("impact") or "").strip()
+            title = (data.get("title") or "Recomendación").strip()
+            product_id = data.get("product_id")
+            product_name = data.get("product_name") or ""
+            try:
+                product_id = int(
+                    product_id) if product_id is not None else None
+            except Exception:
+                product_id = None
+            product_label = f"Producto: {product_name} (ID {product_id})" if product_name or product_id else "Producto no identificado"
+
+            lines = [f"{title} · {product_label}", pr_cap, description]
+            if impact:
+                lines.append("")
+                lines.append(impact)
+            summary = "\n".join(lines)
+
+            return {
+                "summary": summary,
+                "card": {
+                    "title": title,
+                    "priority": priority,
+                    "type": reco_type,
+                    "description": description,
+                    "impact": impact,
+                    "change_pct": data.get("change_pct"),
+                    "product_id": product_id,
+                    "product_name": product_name,
+                    "product_label": product_label,
+                },
+                "products": products_ctx,
+                "debug": {
+                    "metrics": products_ctx,
+                    "best_option": best_card,
+                    "fallback_reason": "quota_exceeded",
+                },
+            }
+        else:
+            raise GeminiError(f"Error al invocar Gemini: {exc}")
 
     if not text:
         raise GeminiError("Gemini no devolvió texto")
@@ -796,9 +862,9 @@ def _safe_json_loads(s: str):
         return None
 
 
-def _ensure_model_or_fallback() -> Optional[genai.GenerativeModel]:
+def _ensure_model_or_fallback() -> Optional[genai.Client]:
     try:
-        return _configure_model()
+        return _get_client()
     except Exception:
         return None
 
@@ -825,8 +891,13 @@ Datos reales (ingresos por mes):
 Calcula una predicción razonable para cada label provisto, manteniendo el mismo orden.
 """.strip()
         try:
-            result = model.generate_content(prompt)
-            data = _safe_json_loads((result.text or "").strip()) or {}
+            client = _get_client()
+            model_name = os.environ.get(
+                "GEMINI_MODEL", "gemini-3-flash-preview")
+            result = client.models.generate_content(
+                model=model_name, contents=prompt)
+            data = _safe_json_loads(
+                (getattr(result, "text", "") or "").strip()) or {}
             out = []
             for it in (data.get("items") or []):
                 label = str(it.get("label") or "")
@@ -890,8 +961,13 @@ Datos reales (unidades por producto):
 Calcula demanda predicha por producto.
 """.strip()
         try:
-            result = model.generate_content(prompt)
-            data = _safe_json_loads((result.text or "").strip()) or {}
+            client = _get_client()
+            model_name = os.environ.get(
+                "GEMINI_MODEL", "gemini-3-flash-preview")
+            result = client.models.generate_content(
+                model=model_name, contents=prompt)
+            data = _safe_json_loads(
+                (getattr(result, "text", "") or "").strip()) or {}
             out = []
             by_id = {int(it['id']): it for it in items if it.get(
                 'id') is not None}
@@ -943,8 +1019,13 @@ Datos reales (ingresos por categoría):
 Calcula ingresos predichos por categoría.
 """.strip()
         try:
-            result = model.generate_content(prompt)
-            data = _safe_json_loads((result.text or "").strip()) or {}
+            client = _get_client()
+            model_name = os.environ.get(
+                "GEMINI_MODEL", "gemini-3-flash-preview")
+            result = client.models.generate_content(
+                model=model_name, contents=prompt)
+            data = _safe_json_loads(
+                (getattr(result, "text", "") or "").strip()) or {}
             out = []
             by_cat = {str(it['category']): it for it in items}
             for it in (data.get("items") or []):
