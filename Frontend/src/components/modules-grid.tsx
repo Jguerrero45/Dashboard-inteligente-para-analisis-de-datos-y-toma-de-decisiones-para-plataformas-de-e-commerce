@@ -9,7 +9,7 @@ const modules = [
     title: "Análisis de Datos",
     description: "Visualiza métricas clave y tendencias de tu negocio en tiempo real",
     icon: BarChart3,
-    href: "/",
+    href: "/dashboard",
     brand: 1,
   },
   {
@@ -39,13 +39,6 @@ const modules = [
     icon: Sparkles,
     href: "/ia-recomendaciones",
     brand: 6,
-  },
-  {
-    title: "Predicciones",
-    description: "Proyecciones de ventas y tendencias basadas en datos históricos",
-    icon: TrendingUp,
-    href: "/predicciones",
-    brand: 7,
   },
 ]
 
