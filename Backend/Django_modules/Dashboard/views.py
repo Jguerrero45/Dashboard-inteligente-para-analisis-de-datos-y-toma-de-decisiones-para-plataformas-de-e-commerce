@@ -34,9 +34,21 @@ from .services.gemini_client import (
 )
 from django.db.models import DecimalField, ExpressionWrapper
 from .models import UserProfile
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 MONTH_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May",
                    "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    default_error_messages = {
+        "no_active_account": "No se encontró una cuenta activa con las credenciales proporcionadas."
+    }
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
 
 class Clientes_ViewSet(viewsets.ModelViewSet):

@@ -86,23 +86,8 @@ const Login: React.FC = () => {
                                 ¿No tienes cuenta?
                             </Link>
                         </div>
-
-                        <div className="mt-3 border-t pt-3">
-                            <p className="text-sm text-muted-foreground mb-2">O inicia sesión con</p>
-                            <div className="flex gap-3">
-                                <Button variant="outline" asChild>
-                                    <a className="flex items-center gap-2"><Github className="h-4 w-4" /> GitHub</a>
-                                </Button>
-                                <Button variant="outline" asChild>
-                                    <a className="flex items-center gap-2"><Mail className="h-4 w-4" /> Email</a>
-                                </Button>
-                            </div>
-                        </div>
                     </form>
                 </CardContent>
-                <CardFooter>
-                    <p className="text-xs text-muted-foreground">Demo local: no se envían credenciales.</p>
-                </CardFooter>
             </Card>
         </div>
     )
