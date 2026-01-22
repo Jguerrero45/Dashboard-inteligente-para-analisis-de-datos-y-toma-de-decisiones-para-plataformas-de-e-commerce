@@ -2,9 +2,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState } from "react"
+import { useCallback } from "react"
 
 export function UnitsChart() {
     const [data, setData] = useState<any[]>([])
@@ -25,7 +26,9 @@ export function UnitsChart() {
     }, [])
 
     const chartConfig = { units: { label: 'Unidades', color: 'hsl(var(--chart-4))' } }
-    const nf = new Intl.NumberFormat('es-ES')
+    const onMove = useCallback((_e: any) => {
+        // interaction handled by Tooltip; keep callback for future use
+    }, [])
 
     return (
         <Card>
@@ -42,7 +45,7 @@ export function UnitsChart() {
             </CardHeader>
             <CardContent>
                 <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                    <AreaChart data={data}>
+                    <AreaChart data={data} onMouseMove={onMove} onMouseLeave={() => { }}>
                         <defs>
                             <linearGradient id="unitsGradient" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.3} />
@@ -52,18 +55,18 @@ export function UnitsChart() {
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis dataKey="month" className="text-xs" />
                         <YAxis className="text-xs" />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Area type="monotone" dataKey="units" stroke="hsl(var(--chart-4))" fill="url(#unitsGradient)" strokeWidth={2} dot={{ r: 3 }} />
+                        <Tooltip data={data} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, data.length - 1)} shared={true} />
+                        <Area
+                            type="monotone"
+                            dataKey="units"
+                            stroke="hsl(var(--chart-4))"
+                            fill="url(#unitsGradient)"
+                            strokeWidth={2}
+                            dot={{ r: 3 }}
+                            activeDot={{ r: 6, stroke: 'hsl(var(--chart-4))', strokeWidth: 2, fill: 'white' }}
+                        />
                     </AreaChart>
                 </ChartContainer>
-                <div className="mt-4 space-y-2">
-                    {data.map((d) => (
-                        <div key={d.month} className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">{d.month}</span>
-                            <span className="font-medium">{nf.format(d.units)}</span>
-                        </div>
-                    ))}
-                </div>
             </CardContent>
         </Card>
     )

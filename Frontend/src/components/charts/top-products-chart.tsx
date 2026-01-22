@@ -2,15 +2,15 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 import { useCurrency } from "@/hooks/use-currency"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 
 // initial empty data; will be fetched from backend
 
 export function TopProductsChart() {
-  const { formatPrice, currency, exchangeRate } = useCurrency()
+  const { formatPrice } = useCurrency()
   const [topProductsData, setTopProductsData] = useState<any[]>([])
   const [sortBy, setSortBy] = useState<'units' | 'revenue'>('units')
 
@@ -35,6 +35,9 @@ export function TopProductsChart() {
 
   // Usar valores crudos desde el backend y delegar formateo a `formatPrice`
   const chartData = topProductsData.map((p) => ({ ...p }))
+  const onMove = useCallback((_e: any) => {
+    // placeholder
+  }, [])
 
   return (
     <Card>
@@ -75,24 +78,15 @@ export function TopProductsChart() {
           className="h-[300px]"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical">
+            <BarChart data={chartData} layout="vertical" onMouseMove={onMove} onMouseLeave={() => { }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" />
               <YAxis dataKey="producto" type="category" width={100} />
-              <ChartTooltip content={<ChartTooltipContent />} formatter={(value: number) => formatPrice(value)} />
-              <Bar dataKey="ventas" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} name="Ventas" />
+              <Tooltip data={chartData} content={renderTooltipWithoutRange} formatter={(value: number) => formatPrice(value)} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={0} shared={false} />
+              <Bar dataKey="ventas" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} name="Ventas" activeBar={{ stroke: 'hsl(var(--chart-1))', strokeWidth: 3 }} />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>
-        {/* Resumen numérico exacto debajo de la gráfica */}
-        <div className="mt-4 space-y-2">
-          {chartData.map((p) => (
-            <div key={p.producto} className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{p.producto}</span>
-              <span className="font-medium">{formatPrice(p.ventas)} · {p.unidades} unidades</span>
-            </div>
-          ))}
-        </div>
       </CardContent>
     </Card>
   )

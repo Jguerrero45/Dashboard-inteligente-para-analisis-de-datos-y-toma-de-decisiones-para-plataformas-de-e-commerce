@@ -2,9 +2,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState } from "react"
+import { useCallback } from "react"
 
 export function OrdersChart() {
     const [data, setData] = useState<any[]>([])
@@ -25,7 +26,9 @@ export function OrdersChart() {
     }, [])
 
     const chartConfig = { orders: { label: 'Pedidos', color: 'hsl(var(--chart-3))' } }
-    const nf = new Intl.NumberFormat('es-ES')
+    const onMove = useCallback((_e: any) => {
+        // placeholder for tooltip interaction
+    }, [])
 
     return (
         <Card>
@@ -42,22 +45,14 @@ export function OrdersChart() {
             </CardHeader>
             <CardContent>
                 <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                    <LineChart data={data}>
+                    <LineChart data={data} onMouseMove={onMove} onMouseLeave={() => { }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis dataKey="month" className="text-xs" />
                         <YAxis className="text-xs" />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Line type="monotone" dataKey="orders" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{ r: 3 }} />
+                        <Tooltip data={data} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, data.length - 1)} shared={true} />
+                        <Line type="monotone" dataKey="orders" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6, stroke: 'hsl(var(--chart-3))', strokeWidth: 2, fill: 'white' }} />
                     </LineChart>
                 </ChartContainer>
-                <div className="mt-4 space-y-2">
-                    {data.map((d) => (
-                        <div key={d.month} className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">{d.month}</span>
-                            <span className="font-medium">{nf.format(d.orders)}</span>
-                        </div>
-                    ))}
-                </div>
             </CardContent>
         </Card>
     )

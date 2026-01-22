@@ -5,6 +5,7 @@ import { DashboardFooter } from "@/components/dashboard-footer"
 import SettingsLayout from "@/components/settings/SettingsLayout"
 import AccountSettings from "@/components/settings/AccountSettings"
 import SecuritySettings from "@/components/settings/SecuritySettings"
+import StoreSettings from "@/components/settings/StoreSettings"
 
 export default function Perfil() {
     return (
@@ -22,6 +23,7 @@ export default function Perfil() {
                         sections={[
                             { key: "account", label: "Cuenta", content: <AccountSettings /> },
                             { key: "security", label: "Seguridad", content: <SecuritySettings /> },
+                            { key: "store", label: "Tienda", content: <StoreSettings /> },
                         ]}
                     />
                 </div>

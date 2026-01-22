@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Tooltip, ResponsiveContainer } from "recharts"
+import { Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts"
 
 export function ChartContainer({ children, className, config }: { children: React.ReactNode; className?: string; config?: any }) {
     // `config` se acepta para compatibilidad con las llamadas existentes desde los charts.
@@ -24,8 +24,31 @@ export function ChartContainer({ children, className, config }: { children: Reac
     )
 }
 
-export function ChartTooltip(props: any) {
-    return <Tooltip {...props} />
+export function ChartTooltip({ content, data, fallbackIndex = 0, ...rest }: any) {
+    // Simplified wrapper: forward props to Recharts' Tooltip and let Recharts
+    // manage active/index state. If a custom `content` is provided, pass it
+    // through; otherwise use the default renderer.
+    // Determine an effective defaultIndex:
+    // - prefer an explicitly passed `defaultIndex` in props
+    // - else use `fallbackIndex` provided by callers
+    // - else if `data` is an array, use the last item
+    const effectiveDefaultIndex = typeof rest.defaultIndex === 'number'
+        ? rest.defaultIndex
+        : (typeof fallbackIndex === 'number' ? fallbackIndex : (Array.isArray(data) ? Math.max(0, data.length - 1) : 0))
+
+    // Provide a `key` that changes when data length or effective index changes so
+    // Recharts will remount the Tooltip and apply `defaultIndex` when async data arrives.
+    const key = `tooltip-${effectiveDefaultIndex}-${Array.isArray(data) ? data.length : 0}`
+
+    return <RechartsTooltip key={key} {...rest} defaultIndex={effectiveDefaultIndex} content={content} />
+}
+
+// Export a `Tooltip` alias so callers can import `Tooltip` from this module
+export const Tooltip = ChartTooltip
+
+export function renderTooltipWithoutRange(props: any) {
+    if (props && props.active && props.payload && props.payload.length) return <ChartTooltipContent {...props} />
+    return null
 }
 
 export function ChartTooltipContent({ active, payload }: any) {

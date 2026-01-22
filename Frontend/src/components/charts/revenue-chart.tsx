@@ -2,13 +2,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
-import { useCurrency } from "@/hooks/use-currency"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 
 export function RevenueChart() {
-  const { currency, exchangeRate, formatPrice } = useCurrency()
   const [data, setData] = useState<any[]>([])
 
   useEffect(() => {
@@ -33,6 +31,9 @@ export function RevenueChart() {
       color: "hsl(var(--chart-2))",
     },
   }
+  const onMove = useCallback((_e: any) => {
+    // noop - reserved for future interaction handling
+  }, [])
 
   return (
     <Card>
@@ -49,23 +50,14 @@ export function RevenueChart() {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart data={chartData}>
+          <BarChart data={chartData} onMouseMove={onMove} onMouseLeave={() => { }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="category" className="text-xs" />
             <YAxis className="text-xs" />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+            <Tooltip data={chartData} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, chartData.length - 1)} shared={true} />
+            <Bar dataKey="revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} activeBar={{ stroke: 'hsl(var(--chart-2))', strokeWidth: 3 }} />
           </BarChart>
         </ChartContainer>
-        {/* Resumen numérico exacto debajo de la gráfica */}
-        <div className="mt-4 space-y-2">
-          {chartData.map((item) => (
-            <div key={item.category} className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{item.category}</span>
-              <span className="font-medium">{formatPrice(item.revenue)}</span>
-            </div>
-          ))}
-        </div>
       </CardContent>
     </Card>
   )

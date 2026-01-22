@@ -1,7 +1,7 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { BarChart3, ShoppingCart, Package, Users, FileText, Sparkles, TrendingUp } from "lucide-react"
+import { BarChart3, Package, Users, FileText, Sparkles, DollarSign, Calculator, Clock } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const modules = [
@@ -40,6 +40,28 @@ const modules = [
     href: "/ia-recomendaciones",
     brand: 6,
   },
+  {
+    title: "Ventas",
+    description: "Resumen de ventas, facturación y tendencias",
+    icon: DollarSign,
+    href: "/ventas",
+    brand: 2,
+  },
+  {
+    title: "Costos",
+    description: "Control y análisis de costos por categoría y centro de costo",
+    icon: Calculator,
+    href: "/costos",
+    brand: 7,
+  },
+  {
+    title: "Próximamente",
+    description: "Nuevo módulo en desarrollo",
+    icon: Clock,
+    href: "",
+    brand: 8,
+    comingSoon: true,
+  },
 ]
 
 export function ModulesGrid() {
@@ -47,25 +69,42 @@ export function ModulesGrid() {
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {modules.map((module) => {
         const Icon = module.icon
-        return (
-          <Link key={module.title} to={module.href}>
-            <Card className="group h-full transition-all hover:shadow-lg hover:scale-105 cursor-pointer">
-              <CardHeader>
-                <div
-                  className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4`}
-                  style={{
-                    background: `hsl(var(--brand-${module.brand}) / 0.12)`,
-                  }}
+        const content = (
+          <Card className={`group h-full transition-all hover:shadow-lg hover:scale-105 ${module.comingSoon ? 'opacity-80' : 'cursor-pointer'}`}>
+            <CardHeader>
+              <div
+                className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4`}
+                style={{
+                  background: `hsl(var(--brand-${module.brand}) / 0.12)`,
+                }}
+              >
+                <Icon className={`h-6 w-6`} style={{ color: `hsl(var(--brand-${module.brand}))` }} />
+              </div>
+              <CardTitle className="text-xl group-hover:text-primary transition-colors">{module.title}</CardTitle>
+              <CardDescription className="text-pretty">{module.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {module.comingSoon ? (
+                <span className="text-sm font-medium text-muted-foreground">Próximamente</span>
+              ) : (
+                <span
+                  className="inline-block text-sm font-medium text-white px-3 py-1 rounded"
+                  style={{ background: `hsl(var(--brand-${module.brand}))` }}
                 >
-                  <Icon className={`h-6 w-6`} style={{ color: `hsl(var(--brand-${module.brand}))` }} />
-                </div>
-                <CardTitle className="text-xl group-hover:text-primary transition-colors">{module.title}</CardTitle>
-                <CardDescription className="text-pretty">{module.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <span className="text-sm font-medium text-primary group-hover:underline">Acceder →</span>
-              </CardContent>
-            </Card>
+                  Acceder →
+                </span>
+              )}
+            </CardContent>
+          </Card>
+        )
+
+        return module.comingSoon ? (
+          <div key={module.title}>
+            {content}
+          </div>
+        ) : (
+          <Link key={module.title} to={module.href}>
+            {content}
           </Link>
         )
       })}

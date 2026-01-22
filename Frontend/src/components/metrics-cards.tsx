@@ -4,20 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, TrendingDown, ShoppingCart, Users, Package, DollarSign } from "lucide-react"
 import { useCurrency } from "@/hooks/use-currency"
 import { useEffect, useMemo, useState } from "react"
+import { getApiBase } from "@/lib/activeStore"
 
 export function MetricsCards() {
   const { formatPrice } = useCurrency()
-  const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api"
+  const API_BASE = getApiBase()
 
   const [salesMonthly, setSalesMonthly] = useState<any[]>([])
   const [customersMonthly, setCustomersMonthly] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
+
 
   useEffect(() => {
     let mounted = true
     const load = async () => {
       try {
-        setLoading(true)
         const [resSales, resCustomers] = await Promise.all([
           fetch(`${API_BASE}/metrics/sales-monthly/?months=2`),
           fetch(`${API_BASE}/metrics/customers-monthly/?months=2`),
@@ -33,7 +33,7 @@ export function MetricsCards() {
       } catch (_) {
         // silencioso
       } finally {
-        if (mounted) setLoading(false)
+        // no-op
       }
     }
     load()

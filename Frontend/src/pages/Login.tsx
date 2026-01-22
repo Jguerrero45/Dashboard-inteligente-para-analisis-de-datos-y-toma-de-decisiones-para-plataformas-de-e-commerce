@@ -1,9 +1,8 @@
 import React, { useState } from "react"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../components/ui/card"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
 import { Button } from "../components/ui/button"
 import { Link, useNavigate } from "react-router-dom"
-import { Github, Mail } from "lucide-react"
 
 const Login: React.FC = () => {
     const [email, setEmail] = useState("")
@@ -87,6 +86,11 @@ const Login: React.FC = () => {
                             </Link>
                         </div>
                     </form>
+                    <div className="mt-4">
+                        <Button type="button" onClick={() => { window.location.href = 'http://localhost:8000/admin' }} className="w-full">
+                            Ingresar como administrador
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
         </div>

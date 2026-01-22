@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { RadialBar, RadialBarChart, ResponsiveContainer, PolarAngleAxis } from "recharts"
-import { ChartContainer } from "@/components/ui/chart"
+import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 
 interface ReturningRate {
@@ -48,6 +48,9 @@ export function ReturningCustomersCard() {
     }, [])
 
     const chartData = rate ? [{ name: "Recompra", value: rate.rate }] : [{ name: "Recompra", value: 0 }]
+    const onMove = useCallback((_e: any) => {
+        // tooltip handles interaction
+    }, [])
 
     return (
         <Card>
@@ -66,9 +69,10 @@ export function ReturningCustomersCard() {
                 <div className="h-[240px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <ChartContainer config={{ value: { label: "Recompra", color: "hsl(var(--chart-2))" } }} className="h-full">
-                            <RadialBarChart innerRadius="60%" outerRadius="100%" data={chartData} startAngle={90} endAngle={-270}>
+                            <RadialBarChart innerRadius="60%" outerRadius="100%" data={chartData} startAngle={90} endAngle={-270} onMouseMove={onMove} onMouseLeave={() => { }}>
                                 <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-                                <RadialBar dataKey="value" minAngle={4} background clockWise fill="hsl(var(--chart-2))" />
+                                <Tooltip data={chartData} content={renderTooltipWithoutRange} cursor={{}} defaultIndex={0} shared={false} />
+                                <RadialBar dataKey="value" background fill="hsl(var(--chart-2))" />
                             </RadialBarChart>
                         </ChartContainer>
                     </ResponsiveContainer>

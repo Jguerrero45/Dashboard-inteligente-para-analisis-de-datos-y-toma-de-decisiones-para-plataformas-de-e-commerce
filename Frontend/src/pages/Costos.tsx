@@ -53,6 +53,7 @@ export default function Costos() {
     useEffect(() => { fetchProductos() }, [])
 
     function handleExportPlantilla() {
+        if (!confirm('¿Estás seguro que deseas exportar la plantilla de costos?')) return
         const a = document.createElement('a')
         a.href = '/api/productos/costos/exportar-plantilla/'
         a.download = 'plantilla_costos.csv'
@@ -62,6 +63,7 @@ export default function Costos() {
     }
 
     async function handleImportCSV(file: File) {
+        if (!confirm(`¿Estás seguro que deseas importar el archivo ${file.name}? Esta acción puede sobrescribir costos existentes.`)) return
         setIsImporting(true)
         setImportErrors(null)
         try {
@@ -85,6 +87,8 @@ export default function Costos() {
     }
 
     async function handleEditarCosto(productoId: number, current: number | null) {
+        // Confirmar intención de editar
+        if (!confirm('¿Estás seguro que deseas editar el costo de este producto?')) return
         // Activar modo edición inline en la fila
         setEditingId(productoId)
         setEditingValue(current != null ? String(current) : "")
@@ -98,6 +102,13 @@ export default function Costos() {
             alert('Valor inválido: use punto decimal (ej: 12.34)')
             return
         }
+        // Validación: el costo no puede ser 0 ni negativo
+        if (payload.costo !== null && payload.costo <= 0) {
+            alert('El costo debe ser un número positivo mayor que 0')
+            return
+        }
+        // Confirmar guardado
+        if (!confirm('¿Estás seguro que deseas guardar el cambio de costo?')) return
         try {
             const res = await fetch(`/api/Productos/${productoId}/`, {
                 method: 'PATCH',

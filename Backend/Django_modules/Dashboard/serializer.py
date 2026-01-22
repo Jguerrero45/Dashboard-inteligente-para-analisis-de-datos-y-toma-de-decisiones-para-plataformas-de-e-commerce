@@ -3,7 +3,7 @@ from rest_framework.validators import UniqueValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
-from .models import Clientes, Productos, Ventas, ModeloPrediccion, EntradaPrediccion, RecomendacionIA, VentaItem, Tasa, UserProfile
+from .models import Clientes, Productos, Ventas, ModeloPrediccion, EntradaPrediccion, RecomendacionIA, VentaItem, Tasa, UserProfile, Store
 
 
 class Clientes_Serializers(serializers.ModelSerializer):
@@ -194,6 +194,17 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 
 class UserProfile_Serializers(serializers.ModelSerializer):
+    # incluir la tienda seleccionada como ID (null si no hay)
+    selected_store = serializers.PrimaryKeyRelatedField(
+        queryset=Store.objects.all(), required=False, allow_null=True)
+
     class Meta:
         model = UserProfile
-        fields = ('phone', 'company', 'address', 'avatar_path')
+        fields = ('phone', 'company', 'address',
+                  'avatar_path', 'selected_store')
+
+
+class StoreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Store
+        fields = ('id', 'name', 'api_url', 'creado_en')

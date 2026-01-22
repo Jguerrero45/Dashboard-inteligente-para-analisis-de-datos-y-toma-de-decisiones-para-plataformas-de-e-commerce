@@ -308,8 +308,8 @@ class RecomendacionIA(models.Model):
         help_text='Prioridad de la recomendación',
     )
 
-    impacto = models.CharField(
-        max_length=200, blank=True, help_text='Impacto estimado (opcional)')
+    impacto = models.TextField(
+        blank=True, help_text='Impacto estimado (opcional)')
 
     metadatos = models.JSONField(
         null=True, blank=True, help_text='Campos adicionales/metadata generada por la IA')
@@ -337,6 +337,28 @@ class Tasa(models.Model):
         ordering = ['-fecha']
 
 
+class Store(models.Model):
+    """Representa una tienda externa cuya API contiene los mismos recursos.
+
+    Se almacena por usuario (owner) para que cada usuario administre sus
+    propias tiendas. El `api_url` será la base que el frontend puede usar
+    para consumir datos de esa tienda.
+    """
+
+    name = models.CharField(max_length=150)
+    api_url = models.URLField(
+        max_length=500, help_text='URL base de la API de la tienda')
+    owner = models.ForeignKey(
+        get_user_model(), on_delete=models.CASCADE, related_name='stores')
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado_en']
+
+    def __str__(self):
+        return f"{self.name} ({self.api_url})"
+
+
 class UserProfile(models.Model):
     """Perfil de usuario extendido para datos adicionales y avatar."""
     user = models.OneToOneField(
@@ -349,6 +371,9 @@ class UserProfile(models.Model):
 
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
+    # Tienda seleccionada por el usuario. Puede ser null (usar API por defecto)
+    selected_store = models.ForeignKey(
+        Store, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
 
     def __str__(self):
         return f"Perfil {self.user_id}"

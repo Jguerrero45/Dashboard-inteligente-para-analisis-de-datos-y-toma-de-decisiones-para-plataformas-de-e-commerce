@@ -1,17 +1,13 @@
 "use client"
 
-"use client"
-
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useCurrency } from "@/hooks/use-currency"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function AccountSettings() {
-    const { currency } = useCurrency()
-    const { toast } = useToast()
+    const { addToast } = useToast()
 
     const [username, setUsername] = useState("")
     const [fullName, setFullName] = useState("")
@@ -48,7 +44,7 @@ export default function AccountSettings() {
     const handleSave = () => {
         const token = localStorage.getItem('access_token')
         if (!token) {
-            toast({ title: 'No autenticado', description: 'Inicia sesión para guardar cambios.' })
+            addToast({ title: 'No autenticado', description: 'Inicia sesión para guardar cambios.' })
             return
         }
         const [firstName, ...rest] = fullName.trim().split(' ')
@@ -73,11 +69,11 @@ export default function AccountSettings() {
                 const data = await res.json()
                 if (!res.ok) throw new Error(data.detail || 'No se pudo guardar')
                 if (data.avatar_url) setAvatarUrl(data.avatar_url)
-                toast({ title: 'Guardado', description: 'Perfil actualizado correctamente.' })
+                addToast({ title: 'Guardado', description: 'Perfil actualizado correctamente.' })
             })
             .catch((err) => {
                 console.error('Profile save error', err)
-                toast({ title: 'Error', description: 'No se pudo guardar el perfil.' })
+                addToast({ title: 'Error', description: 'No se pudo guardar el perfil.' })
             })
     }
 
@@ -91,12 +87,12 @@ export default function AccountSettings() {
 
     const uploadAvatar = () => {
         if (!avatarFile) {
-            toast({ title: 'Sin archivo', description: 'Selecciona una imagen para subir.' })
+            addToast({ title: 'Sin archivo', description: 'Selecciona una imagen para subir.' })
             return
         }
         const token = localStorage.getItem('access_token')
         if (!token) {
-            toast({ title: 'No autenticado', description: 'Inicia sesión para subir el avatar.' })
+            addToast({ title: 'No autenticado', description: 'Inicia sesión para subir el avatar.' })
             return
         }
         const fd = new FormData()
@@ -110,11 +106,11 @@ export default function AccountSettings() {
                 const data = await res.json()
                 if (!res.ok) throw new Error(data.detail || 'No se pudo subir el avatar')
                 setAvatarUrl(data.avatar_url || null)
-                toast({ title: 'Avatar actualizado', description: 'La foto de perfil fue cambiada.' })
+                addToast({ title: 'Avatar actualizado', description: 'La foto de perfil fue cambiada.' })
             })
             .catch((err) => {
                 console.error('Avatar upload error', err)
-                toast({ title: 'Error', description: 'No se pudo subir el avatar.' })
+                addToast({ title: 'Error', description: 'No se pudo subir el avatar.' })
             })
     }
 

@@ -1,15 +1,14 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Cell, Pie, PieChart } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Cell, Pie, PieChart, Sector } from "recharts"
+import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 
 export function ProductsChart() {
   const [months, setMonths] = useState<string[]>([])
   const [series, setSeries] = useState<Array<any>>([])
-  const [data, setData] = useState<any[]>([])
   const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
@@ -21,16 +20,7 @@ export function ProductsChart() {
         if (json && Array.isArray(json.months) && Array.isArray(json.series)) {
           setMonths(json.months)
           setSeries(json.series)
-          // build chart data: { month: label, [category]: units }
-          const chartData = json.months.map((label: string, idx: number) => {
-            const obj: any = { month: label }
-            json.series.forEach((s: any) => {
-              const key = s.category || 'Sin categoría'
-              obj[key] = Number(s.monthly[idx] || 0)
-            })
-            return obj
-          })
-          setData(chartData)
+          // build chart data if needed in future: months x categories
         }
       })
       .catch(() => { })
@@ -43,9 +33,15 @@ export function ProductsChart() {
   const totalUnits = series.reduce((s, it) => s + (Number(it.total) || 0), 0)
   const slices = series.map((s: any, i: number) => ({ name: s.category, value: totalUnits > 0 ? (Number(s.total) / totalUnits) * 100 : 0, fill: palette[i % palette.length], rawUnits: Number(s.total) }))
 
-  const formatNumber = (n: number) => new Intl.NumberFormat('es-ES').format(n)
+  const onMove = useCallback((_e: any) => {
+    // tooltip handles active index; keep placeholder
+  }, [])
+
+
 
   const toggleExpanded = (cat: string) => setExpandedCats((p) => ({ ...p, [cat]: !p[cat] }))
+
+  const formatNumber = (n: number) => new Intl.NumberFormat('es-ES').format(n)
 
   const chartConfig = { value: { label: 'Porcentaje' } }
 
@@ -64,8 +60,8 @@ export function ProductsChart() {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <PieChart>
-            <ChartTooltip content={<ChartTooltipContent />} />
+          <PieChart onMouseMove={onMove} onMouseLeave={() => { }}>
+            <Tooltip data={slices} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={0} shared={false} />
             <Pie
               data={slices}
               dataKey="value"
@@ -73,6 +69,7 @@ export function ProductsChart() {
               cx="50%"
               cy="50%"
               outerRadius={100}
+              activeShape={(props: any) => <Sector {...props} outerRadius={props.outerRadius + 8} />}
               label={(props: any) => {
                 const { x, y, percent, payload } = props
                 const pct = (payload && typeof payload.value === 'number') ? payload.value : (percent * 100)
@@ -89,6 +86,7 @@ export function ProductsChart() {
               ))}
             </Pie>
           </PieChart>
+
         </ChartContainer>
 
         {/* Resumen con punto de color, nombre, total y botón '...' */}

@@ -2,13 +2,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
-import { useCurrency } from "@/hooks/use-currency"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 
 export function SalesChart() {
-  const { currency, exchangeRate, formatPrice } = useCurrency()
   const [data, setData] = useState<any[]>([])
 
   useEffect(() => {
@@ -54,6 +52,9 @@ export function SalesChart() {
       color: "hsl(var(--chart-1))",
     },
   }
+  const onMove = useCallback((_e: any) => {
+    // noop: keep for potential future interaction handling
+  }, [])
 
   return (
     <Card>
@@ -70,7 +71,7 @@ export function SalesChart() {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <AreaChart data={chartData}>
+          <AreaChart data={chartData} onMouseMove={onMove} onMouseLeave={() => { }}>
             <defs>
               <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
@@ -80,7 +81,7 @@ export function SalesChart() {
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="month" className="text-xs" />
             <YAxis className="text-xs" />
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <Tooltip data={chartData} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, chartData.length - 1)} shared={true} />
             <Area
               type="monotone"
               dataKey="sales"
@@ -92,15 +93,6 @@ export function SalesChart() {
             />
           </AreaChart>
         </ChartContainer>
-        {/* Resumen numérico exacto debajo de la gráfica */}
-        <div className="mt-4 space-y-2">
-          {chartData.map((d) => (
-            <div key={d.month} className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{d.month}</span>
-              <span className="font-medium">{formatPrice(d.sales)}</span>
-            </div>
-          ))}
-        </div>
       </CardContent>
     </Card>
   )

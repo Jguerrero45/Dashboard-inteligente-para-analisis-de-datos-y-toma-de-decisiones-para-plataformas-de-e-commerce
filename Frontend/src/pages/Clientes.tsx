@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import StatusBadge from "@/components/ui/status-badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Calendar } from "@/components/ui/calendar"
@@ -370,11 +370,7 @@ export default function ClientesPage() {
                                                     <TableCell className="font-semibold">{formatPrice(c.gastoTotal)}</TableCell>
                                                     <TableCell>{c.segmento}</TableCell>
                                                     <TableCell>
-                                                        <Badge
-                                                            variant={c.estado === "activo" ? "default" : "secondary"}
-                                                        >
-                                                            {c.estado.charAt(0).toUpperCase() + c.estado.slice(1)}
-                                                        </Badge>
+                                                        <StatusBadge status={c.estado} />
                                                     </TableCell>
                                                 </TableRow>
                                             ))

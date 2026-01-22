@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
+import { getApiBase } from "@/lib/activeStore"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -9,7 +10,7 @@ import { AIRecommendations } from "@/components/ai-recommendations"
 type Product = { id: number; nombre: string; categoria: string }
 
 export default function IaRecomendacionesPage() {
-    const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api"
+    const API_BASE = getApiBase()
     const [response, setResponse] = useState("")
     const [loading, setLoading] = useState(false)
     const [fetchingProducts, setFetchingProducts] = useState(false)
@@ -18,9 +19,7 @@ export default function IaRecomendacionesPage() {
     // Lista de recomendaciones mostradas en el panel lateral.
     // Nota: estas recomendaciones deben persistirse en la base de datos cuando exista el endpoint.
     // Guardamos localmente en estado y enviamos comentario TODO donde se necesite persistencia.
-    const today = new Date().toISOString().slice(0, 10)
     const [recommendations, setRecommendations] = useState<any[]>([])
-    const [loadingRecs, setLoadingRecs] = useState(false)
 
     // Fetch productos reales desde backend
     useEffect(() => {
@@ -51,8 +50,7 @@ export default function IaRecomendacionesPage() {
 
     const categories = useMemo(() => {
         const uniq = Array.from(new Set(products.map((p) => p.categoria || "Sin categoría")))
-        const base = uniq.map((c) => ({ id: c, name: c }))
-        return [{ id: "ALL_CAT", name: "-- Todas --" }, ...base]
+        return uniq.map((c) => ({ id: c, name: c }))
     }, [products])
 
     const productsByCategory = useMemo(() => {
@@ -65,12 +63,12 @@ export default function IaRecomendacionesPage() {
         return map
     }, [products])
 
-    const [selectedCategory, setSelectedCategory] = useState<string>("ALL_CAT")
+    const [selectedCategory, setSelectedCategory] = useState<string>("")
     const [selectedProduct, setSelectedProduct] = useState<string | "">("")
 
     // si llegan categorías reales, escoger la primera por defecto
     useEffect(() => {
-        if (!selectedCategory && categories.length > 0) setSelectedCategory("ALL_CAT")
+        if (!selectedCategory && categories.length > 0) setSelectedCategory(categories[0].id)
     }, [categories, selectedCategory])
 
     // Solicita recomendaciones al backend (Gemini). Si falla con filtros, reintenta sin filtros.
@@ -81,7 +79,7 @@ export default function IaRecomendacionesPage() {
 
         if (useFilters) {
             const cat = categories.find((c) => c.id === selectedCategory)
-            if (cat?.id && cat.id !== "ALL_CAT") {
+            if (cat && cat.id) {
                 payload.category = cat.id
                 if (selectedProduct && !Number.isNaN(Number(selectedProduct))) {
                     payload.product_ids = [Number(selectedProduct)]
@@ -91,7 +89,7 @@ export default function IaRecomendacionesPage() {
                     payload.limit = Math.max(1, count || products.length || 20)
                 }
             } else {
-                // ALL_CAT: no limitar por categoría, tomar todos los productos
+                // Sin categoría seleccionada: no limitar por categoría
                 payload.limit = Math.max(1, products.length || 20)
             }
         } else {
@@ -127,10 +125,18 @@ export default function IaRecomendacionesPage() {
     }
 
     async function generateAutomaticRecommendations() {
+        if (!selectedProduct || Number.isNaN(Number(selectedProduct))) {
+            setResponse('Selecciona un producto antes de generar recomendaciones.')
+            return
+        }
         await requestRecommendation(true)
     }
 
     async function generateByFilters() {
+        if (!selectedProduct || Number.isNaN(Number(selectedProduct))) {
+            setResponse('Selecciona un producto antes de generar recomendaciones.')
+            return
+        }
         await requestRecommendation(true)
     }
 
@@ -207,7 +213,6 @@ export default function IaRecomendacionesPage() {
     // Cargar recomendaciones guardadas desde backend y mapear a UI
     async function loadRecommendations() {
         try {
-            setLoadingRecs(true)
             const res = await fetch(`${API_BASE}/recomendaciones/`)
             if (!res.ok) throw new Error(`Error ${res.status}`)
             const data = await res.json()
@@ -235,7 +240,7 @@ export default function IaRecomendacionesPage() {
         } catch (e) {
             // silencioso: si falla, se mantiene la lista actual
         } finally {
-            setLoadingRecs(false)
+            // no-op
         }
     }
 
@@ -265,11 +270,6 @@ export default function IaRecomendacionesPage() {
                                             <CardTitle>Filtros</CardTitle>
                                             <CardDescription>Filtra por categoría y productos (productos dependen de la categoría)</CardDescription>
                                         </div>
-                                        <div>
-                                            <Button onClick={generateAutomaticRecommendations} disabled={loading || !selectedCategory}>
-                                                Generar recomendaciones automáticas
-                                            </Button>
-                                        </div>
                                     </div>
                                 </CardHeader>
                                 <CardContent>
@@ -289,10 +289,9 @@ export default function IaRecomendacionesPage() {
 
                                             <label className="flex-1">
                                                 <div className="text-sm font-medium mb-1">Productos</div>
-                                                <Select value={selectedProduct === "" ? "ALL" : selectedProduct} onValueChange={(v: string) => setSelectedProduct(v === "ALL" ? "" : v)}>
-                                                    <SelectTrigger className="w-full text-foreground placeholder:text-muted-foreground">{selectedProduct ? (productsByCategory[selectedCategory] ?? []).find((p) => p.id === selectedProduct)?.name : "-- Todos --"}</SelectTrigger>
+                                                <Select value={selectedProduct} onValueChange={(v: string) => setSelectedProduct(v)}>
+                                                    <SelectTrigger className="w-full text-foreground placeholder:text-muted-foreground">{selectedProduct ? (productsByCategory[selectedCategory] ?? []).find((p) => p.id === selectedProduct)?.name : (fetchingProducts ? "Cargando..." : "-- Sin datos --")}</SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="ALL">-- Todos --</SelectItem>
                                                         {(productsByCategory[selectedCategory] ?? []).map((p) => (
                                                             <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                                                         ))}
@@ -301,11 +300,19 @@ export default function IaRecomendacionesPage() {
                                             </label>
                                         </div>
 
+                                        {/* Mensajes de ayuda cuando no hay productos */}
+                                        {products.length === 0 && !fetchingProducts && (
+                                            <p className="text-sm text-muted-foreground">No hay productos cargados. Agrega al menos un producto para que las recomendaciones funcionen.</p>
+                                        )}
+                                        {products.length > 0 && (productsByCategory[selectedCategory] ?? []).length === 0 && !fetchingProducts && (
+                                            <p className="text-sm text-muted-foreground">Esta categoría no tiene productos. Agrega productos a la categoría para obtener recomendaciones.</p>
+                                        )}
+
                                         <div className="flex items-center gap-2">
-                                            <Button onClick={generateByFilters} disabled={loading || !selectedCategory}>
-                                                Generar (por filtros)
+                                            <Button onClick={generateByFilters} disabled={loading || !selectedProduct}>
+                                                Generar
                                             </Button>
-                                            <Button variant="ghost" onClick={() => { setSelectedCategory(categories[0].id); setSelectedProduct(""); setResponse("") }}>
+                                            <Button variant="ghost" onClick={() => { setSelectedCategory(categories[0]?.id || ""); setSelectedProduct(""); setResponse("") }}>
                                                 Limpiar
                                             </Button>
                                         </div>

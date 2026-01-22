@@ -2,9 +2,9 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useCurrency } from "@/hooks/use-currency"
 
 export function CustomersChart() {
@@ -43,6 +43,9 @@ export function CustomersChart() {
   const palette = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"]
 
   const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({})
+  const onMove = useCallback((_e: any) => {
+    // placeholder for tooltip interaction
+  }, [])
 
   const toggleExpanded = (id: string | number) => {
     const key = String(id)
@@ -64,16 +67,25 @@ export function CustomersChart() {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[340px] w-full">
-          <LineChart data={data}>
+          <LineChart data={data} onMouseMove={onMove} onMouseLeave={() => { }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="month" className="text-xs" />
             <YAxis className="text-xs" />
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <Tooltip data={data} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, data.length - 1)} shared={true} />
             {/* one Line per top client */}
             {series.map((s: any, i: number) => {
               const key = s.cliente || `Cliente ${s.cliente_id}`
               return (
-                <Line key={key} type="monotone" dataKey={key} stroke={palette[i % palette.length]} strokeWidth={2} dot={{ r: 3 }} name={key} />
+                <Line
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  stroke={palette[i % palette.length]}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 6, stroke: palette[i % palette.length], strokeWidth: 2, fill: 'white' }}
+                  name={key}
+                />
               )
             })}
           </LineChart>

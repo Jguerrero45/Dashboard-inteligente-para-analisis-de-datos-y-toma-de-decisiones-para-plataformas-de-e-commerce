@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
-import { useCurrency } from "@/hooks/use-currency"
+
 
 interface CategoryValue {
     category: string
@@ -14,7 +14,7 @@ interface CategoryValue {
 }
 
 export function CategoryPerformanceRadar() {
-    const { formatPrice } = useCurrency()
+
     const [data, setData] = useState<CategoryValue[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -46,6 +46,9 @@ export function CategoryPerformanceRadar() {
     }, [])
 
     const radarData = useMemo(() => (data.length ? data : [{ category: "Sin datos", revenue: 0, cost: 0 }]), [data])
+    const onMove = useCallback((_e: any) => {
+        // tooltip manages active index
+    }, [])
 
     return (
         <Card>
@@ -69,25 +72,17 @@ export function CategoryPerformanceRadar() {
                     className="h-[360px]"
                 >
                     <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart data={radarData} outerRadius="75%">
+                        <RadarChart data={radarData} outerRadius="75%" onMouseMove={onMove} onMouseLeave={() => { }}>
                             <PolarGrid />
                             <PolarAngleAxis dataKey="category" tick={{ fontSize: 11 }} />
                             <PolarRadiusAxis angle={90} domain={[0, 'auto']} />
-                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Tooltip data={radarData} content={renderTooltipWithoutRange} cursor={{}} defaultIndex={0} shared={false} />
                             <Legend />
                             <Radar name="Ingresos" dataKey="revenue" stroke="hsl(var(--chart-3))" fill="hsl(var(--chart-3))" fillOpacity={0.45} />
                             <Radar name="Costos" dataKey="cost" stroke="hsl(var(--chart-4))" fill="hsl(var(--chart-4))" fillOpacity={0.25} />
                         </RadarChart>
                     </ResponsiveContainer>
                 </ChartContainer>
-                <div className="mt-4 space-y-2">
-                    {radarData.map((c) => (
-                        <div key={c.category} className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">{c.category}</span>
-                            <span className="font-medium">Ingresos {formatPrice(c.revenue)} · Costos {formatPrice(c.cost)}</span>
-                        </div>
-                    ))}
-                </div>
                 {loading && <p className="text-sm text-muted-foreground mt-2">Cargando...</p>}
                 {!loading && data.length === 0 && <p className="text-sm text-muted-foreground mt-2">Sin datos disponibles.</p>}
             </CardContent>

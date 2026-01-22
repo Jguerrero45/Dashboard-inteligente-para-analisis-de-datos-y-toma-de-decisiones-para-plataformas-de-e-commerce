@@ -2,13 +2,13 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ComposedChart, Bar, Line, CartesianGrid, XAxis, YAxis } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
-import { useCurrency } from "@/hooks/use-currency"
-import { useEffect, useState } from "react"
+
+import { useEffect, useState, useCallback } from "react"
 
 export function ProfitMarginChart() {
-    const { currency, exchangeRate, formatPrice } = useCurrency()
+
     const [data, setData] = useState<any[]>([])
 
     useEffect(() => {
@@ -36,6 +36,9 @@ export function ProfitMarginChart() {
         revenue: { label: "Ingresos", color: "hsl(var(--chart-4))" },
         share: { label: "Participación (%)", color: "hsl(var(--chart-1))" },
     }
+    const onMove = useCallback((_e: any) => {
+        // placeholder
+    }, [])
 
     return (
         <Card>
@@ -52,25 +55,16 @@ export function ProfitMarginChart() {
             </CardHeader>
             <CardContent>
                 <ChartContainer config={chartConfig} className="h-[340px] w-full">
-                    <ComposedChart data={computed}>
+                    <ComposedChart data={computed} onMouseMove={onMove} onMouseLeave={() => { }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis dataKey="category" className="text-xs" />
                         <YAxis yAxisId="left" className="text-xs" />
                         <YAxis yAxisId="right" orientation="right" className="text-xs" />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar yAxisId="left" dataKey="revenue" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
-                        <Line yAxisId="right" type="monotone" dataKey="share" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={{ r: 3 }} />
+                        <Tooltip data={computed} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, computed.length - 1)} shared={true} />
+                        <Bar yAxisId="left" dataKey="revenue" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} activeBar={{ stroke: 'hsl(var(--chart-4))', strokeWidth: 3 }} />
+                        <Line yAxisId="right" type="monotone" dataKey="share" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6, stroke: 'hsl(var(--chart-1))', strokeWidth: 2, fill: 'white' }} />
                     </ComposedChart>
                 </ChartContainer>
-                {/* Resumen numérico exacto debajo de la gráfica */}
-                <div className="mt-4 space-y-2">
-                    {computed.map((item) => (
-                        <div key={item.category} className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">{item.category}</span>
-                            <span className="font-medium">{formatPrice(item.revenue)} · {item.share.toFixed(2)}%</span>
-                        </div>
-                    ))}
-                </div>
             </CardContent>
         </Card>
     )

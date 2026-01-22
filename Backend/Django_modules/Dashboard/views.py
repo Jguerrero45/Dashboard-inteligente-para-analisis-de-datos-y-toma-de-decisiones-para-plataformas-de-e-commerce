@@ -3,7 +3,7 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import render
-from .models import Clientes, Productos, Ventas, RecomendacionIA, VentaItem, Tasa
+from .models import Clientes, Productos, Ventas, RecomendacionIA, VentaItem, Tasa, Store
 from .serializer import (
     Clientes_Serializers,
     Productos_Serializers,
@@ -12,6 +12,7 @@ from .serializer import (
     RecomendacionIA_Serializers,
     Tasa_Serializers,
     UserRegistrationSerializer,
+    StoreSerializer,
 )
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Sum, Max, Q, Exists, OuterRef
@@ -103,6 +104,30 @@ class Tasa_ViewSet(viewsets.ModelViewSet):
     """ViewSet para el modelo Tasa."""
     queryset = Tasa.objects.all().order_by('-fecha')
     serializer_class = Tasa_Serializers
+
+
+class StoreViewSet(viewsets.ModelViewSet):
+    """CRUD para las tiendas (Store). Cada usuario administra sus propias tiendas."""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = StoreSerializer
+
+    def get_queryset(self):
+        # Mostrar solo las tiendas del usuario autenticado
+        user = getattr(self.request, 'user', None)
+        if user and user.is_authenticated:
+            return Store.objects.filter(owner=user).order_by('-creado_en')
+        return Store.objects.none()
+
+    def perform_create(self, serializer):
+        store = serializer.save(owner=self.request.user)
+        # Al crear una tienda, establecerla como tienda seleccionada del perfil
+        try:
+            profile, _ = UserProfile.objects.get_or_create(
+                user=self.request.user)
+            profile.selected_store = store
+            profile.save(update_fields=['selected_store'])
+        except Exception:
+            pass
 
 
 class RecomendacionIA_ViewSet(viewsets.ModelViewSet):
@@ -252,8 +277,7 @@ class ProductsGrowthView(APIView):
             it.get('revenue') or 0) for it in items_prev}
 
         rows = []
-        product_names = {it['producto__id']
-            : it['producto__nombre'] for it in items_now}
+        product_names = {it['producto__id']                         : it['producto__nombre'] for it in items_now}
         product_names.update(
             {it['producto__id']: it['producto__nombre'] for it in items_prev})
 
@@ -1412,6 +1436,42 @@ class ProfileView(APIView):
         avatar_url = None
         if profile.avatar_path:
             avatar_url = f"{settings.MEDIA_URL}{profile.avatar_path}"
+        selected_store = None
+        # Si el usuario no tiene tiendas, crear automáticamente la "Tienda 1"
+        try:
+            user_has_stores = Store.objects.filter(owner=user).exists()
+        except Exception:
+            user_has_stores = False
+
+        if not user_has_stores:
+            try:
+                # Construir una URL base para la API de la tienda a partir de la petición
+                api_candidate = request.build_absolute_uri('/api')
+                api_candidate = api_candidate.rstrip('/')
+                store, created = Store.objects.get_or_create(
+                    owner=user,
+                    api_url=api_candidate,
+                    defaults={'name': 'Tienda 1'}
+                )
+                # establecer como tienda seleccionada
+                profile.selected_store = store
+                profile.save(update_fields=['selected_store'])
+                selected_store = {'id': store.id,
+                                  'name': store.name, 'api_url': store.api_url}
+            except Exception:
+                # si falla la creación, continuar sin interrumpir la vista
+                selected_store = None
+        else:
+            try:
+                if profile.selected_store:
+                    selected_store = {
+                        'id': profile.selected_store.id,
+                        'name': profile.selected_store.name,
+                        'api_url': profile.selected_store.api_url,
+                    }
+            except Exception:
+                selected_store = None
+
         return Response({
             'username': user.username,
             'first_name': user.first_name,
@@ -1421,6 +1481,7 @@ class ProfileView(APIView):
             'company': profile.company,
             'address': profile.address,
             'avatar_url': avatar_url,
+            'selected_store': selected_store,
         })
 
     def put(self, request):
@@ -1433,6 +1494,15 @@ class ProfileView(APIView):
         profile.phone = data.get('phone', profile.phone)
         profile.company = data.get('company', profile.company)
         profile.address = data.get('address', profile.address)
+        # permitir actualizar la tienda seleccionada mediante "selected_store"
+        selected_store_id = data.get(
+            'selected_store') or data.get('selected_store_id')
+        if selected_store_id is not None:
+            try:
+                store = Store.objects.get(id=selected_store_id, owner=user)
+                profile.selected_store = store
+            except Store.DoesNotExist:
+                profile.selected_store = None
         user.save()
         profile.save()
         avatar_url = f"{settings.MEDIA_URL}{profile.avatar_path}" if profile.avatar_path else None

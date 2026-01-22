@@ -15,22 +15,22 @@ const TermsModal: React.FC<{ show: boolean; onClose: () => void }> = ({ show, on
             aria-label="Términos y condiciones"
             style={{ backgroundColor: "var(--overlay)" }}
         >
-            <div className="relative w-full max-w-3xl max-h-[85vh] overflow-hidden rounded-2xl bg-white text-black shadow-2xl border dark:bg-slate-900">
-                <div className="flex items-start justify-between gap-4 p-6 border-b bg-white dark:bg-slate-900">
+            <div className="relative w-full max-w-3xl max-h-[85vh] overflow-hidden rounded-2xl bg-slate-900 text-white shadow-2xl border dark:bg-slate-900">
+                <div className="flex items-start justify-between gap-4 p-6 border-b bg-slate-900">
                     <div>
-                        <h2 className="text-xl font-semibold text-black">Términos y Condiciones de Uso</h2>
-                        <p className="text-sm text-black mt-1">Última actualización: 14 de enero de 2026</p>
+                        <h2 className="text-xl font-semibold text-white">Términos y Condiciones de Uso</h2>
+                        <p className="text-sm text-white mt-1">Última actualización: 14 de enero de 2026</p>
                     </div>
                     <button
                         type="button"
                         aria-label="Cerrar"
-                        className="text-sm text-black hover:text-gray-900"
+                        className="text-sm text-white hover:text-gray-300"
                         onClick={onClose}
                     >
                         ✕
                     </button>
                 </div>
-                <div className="p-6 overflow-y-auto max-h-[calc(85vh-112px)] space-y-4 text-base leading-7 text-black bg-white dark:text-black">
+                <div className="p-6 overflow-y-auto max-h-[calc(85vh-112px)] space-y-4 text-base leading-7 text-white bg-slate-900">
                     <p>
                         <strong>1. Objeto del servicio.</strong> Esta plataforma académica permite registrar ventas, clientes,
                         inventario y métricas de negocio con fines educativos y de investigación. No está destinada a operaciones
