@@ -72,10 +72,10 @@ const TermsModal: React.FC<{ show: boolean; onClose: () => void }> = ({ show, on
                     </p>
                 </div>
                 <div className="flex justify-end gap-3 p-6 border-t bg-white dark:bg-slate-900">
-                    <Button type="button" variant="secondary" onClick={onClose}>
+                    <Button type="button" variant="secondary" onClick={onClose} className="bg-gray-200 hover:bg-gray-300 text-gray-800">
                         Cerrar
                     </Button>
-                    <Button type="button" onClick={onClose}>
+                    <Button type="button" onClick={onClose} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">
                         He leído y acepto
                     </Button>
                 </div>
@@ -230,7 +230,7 @@ const Register: React.FC = () => {
                         {error && <p className="text-sm text-destructive">{error}</p>}
 
                         <div className="flex items-center justify-between">
-                            <Button type="submit">Crear cuenta</Button>
+                            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">Crear cuenta</Button>
                             <Link to="/login" className="text-sm text-muted-foreground underline">
                                 ¿Ya tienes cuenta?
                             </Link>

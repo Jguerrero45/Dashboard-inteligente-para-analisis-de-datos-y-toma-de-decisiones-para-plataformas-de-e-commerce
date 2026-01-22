@@ -131,7 +131,7 @@ export default function AccountSettings() {
                             )}
                         </div>
                         <Input type="file" accept="image/*" onChange={handleAvatarChange} />
-                        <Button variant="outline" onClick={uploadAvatar}>Cambiar foto</Button>
+                        <Button variant="outline" onClick={uploadAvatar} className="bg-amber-500 hover:bg-amber-600 text-white">Cambiar foto</Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
@@ -159,7 +159,7 @@ export default function AccountSettings() {
                             <Input placeholder="Calle, Ciudad, País" value={address} onChange={(e) => setAddress(e.target.value)} />
                         </div>
                         <div className="md:col-span-2 flex gap-2 justify-end">
-                            <Button onClick={handleSave}>Guardar</Button>
+                            <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">Guardar</Button>
                         </div>
                     </div>
                 </div>

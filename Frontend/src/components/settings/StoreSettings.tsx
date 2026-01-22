@@ -96,7 +96,7 @@ export default function StoreSettings() {
                         <label className="text-xs mt-2">API URL</label>
                         <Input value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="https://tienda.example.com/api" />
                         <div className="flex justify-end gap-2 mt-2">
-                            <Button onClick={handleCreate}>Agregar</Button>
+                            <Button onClick={handleCreate} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">Agregar</Button>
                         </div>
                     </div>
 
@@ -112,7 +112,7 @@ export default function StoreSettings() {
                                             <div className="text-xs text-muted-foreground">{s.api_url}</div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <Button variant="outline" onClick={() => setActive(s)}>Seleccionar</Button>
+                                            <Button variant="outline" onClick={() => setActive(s)} className="bg-indigo-600 hover:bg-indigo-700 text-white">Seleccionar</Button>
                                             <Button variant="destructive" onClick={() => handleDelete(s.id)}>Eliminar</Button>
                                         </div>
                                     </div>

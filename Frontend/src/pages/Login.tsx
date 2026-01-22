@@ -80,14 +80,14 @@ const Login: React.FC = () => {
                         </div>
                         {error && <p className="text-sm text-destructive">{error}</p>}
                         <div className="flex items-center justify-between">
-                            <Button type="submit">Entrar</Button>
+                            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">Entrar</Button>
                             <Link to="/register" className="text-sm text-muted-foreground underline">
                                 ¿No tienes cuenta?
                             </Link>
                         </div>
                     </form>
                     <div className="mt-4">
-                        <Button type="button" onClick={() => { window.location.href = 'http://localhost:8000/admin' }} className="w-full">
+                        <Button type="button" onClick={() => { window.location.href = 'http://localhost:8000/admin' }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
                             Ingresar como administrador
                         </Button>
                     </div>

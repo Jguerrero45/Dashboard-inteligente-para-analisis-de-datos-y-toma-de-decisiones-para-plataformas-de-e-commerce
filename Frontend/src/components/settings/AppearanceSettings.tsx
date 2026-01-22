@@ -42,7 +42,7 @@ export default function AppearanceSettings() {
                 </div>
 
                 <div className="mt-4 flex gap-2">
-                    <Button>Aplicar</Button>
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">Aplicar</Button>
                     <Button variant="ghost">Restaurar por defecto</Button>
                 </div>
             </CardContent>

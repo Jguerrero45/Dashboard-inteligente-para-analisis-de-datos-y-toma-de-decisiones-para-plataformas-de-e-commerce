@@ -19,8 +19,7 @@ const productosData: Array<any> = []
 export default function ProductosPage() {
   const { formatPrice } = useCurrency()
   const [searchTerm, setSearchTerm] = useState("")
-  // "" representa la opción "Sin datos" (categoría vacía/null). Es la opción predefinida.
-  const [categoriaFilter, setCategoriaFilter] = useState("")
+  const [categoriaFilter, setCategoriaFilter] = useState("todas")
   const [estadoFilter, setEstadoFilter] = useState("todos")
   const [productos, setProductos] = useState<any[]>(productosData)
   const [loading, setLoading] = useState(false)
@@ -80,16 +79,13 @@ export default function ProductosPage() {
     const matchSearch =
       String(producto.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       String(producto.id).toLowerCase().includes(searchTerm.toLowerCase())
-    const matchCategoria =
-      categoriaFilter === "todas" ||
-      (categoriaFilter === "" ? (!producto.categoria || producto.categoria === "") : producto.categoria === categoriaFilter)
+    const matchCategoria = categoriaFilter === "todas" || producto.categoria === categoriaFilter
     const matchEstado = estadoFilter === "todos" || producto.estado === estadoFilter
     return matchSearch && matchCategoria && matchEstado
   })
 
   // Obtener categorías únicas (desde los productos cargados)
-  // Normalizar categorías: reemplazar null/undefined por cadena vacía para representar "Sin datos"
-  const categorias = ["", "todas", ...Array.from(new Set(productos.map((p) => p.categoria ?? ""))).filter((c) => c !== "")]
+  const categorias = ["todas", ...Array.from(new Set(productos.map((p) => p.categoria)))]
 
   // Calcular estadísticas
   const totalProductos = productos.length
@@ -192,8 +188,8 @@ export default function ProductosPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {categorias.map((cat) => (
-                        <SelectItem key={String(cat)} value={cat}>
-                          {cat === "" ? "Sin datos" : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                        <SelectItem key={cat} value={cat}>
+                          {cat.charAt(0).toUpperCase() + cat.slice(1)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -217,7 +213,7 @@ export default function ProductosPage() {
                   variant="outline"
                   onClick={() => {
                     setSearchTerm("")
-                    setCategoriaFilter("")
+                    setCategoriaFilter("todas")
                     setEstadoFilter("todos")
                   }}
                 >

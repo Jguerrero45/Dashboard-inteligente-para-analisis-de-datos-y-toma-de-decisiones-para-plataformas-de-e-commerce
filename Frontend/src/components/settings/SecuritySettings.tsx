@@ -39,7 +39,7 @@ export default function SecuritySettings() {
                     </div>
 
                     <div className="flex gap-2">
-                        <Button>Actualizar contraseña</Button>
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">Actualizar contraseña</Button>
                     </div>
                 </div>
             </CardContent>

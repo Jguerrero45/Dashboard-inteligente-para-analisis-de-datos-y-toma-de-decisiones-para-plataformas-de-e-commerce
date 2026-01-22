@@ -25,7 +25,7 @@ export default function BillingSettings() {
                 </div>
 
                 <div className="mt-4 flex gap-2">
-                    <Button>Actualizar método</Button>
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">Actualizar método</Button>
                     <Button variant="ghost">Ver facturas</Button>
                 </div>
             </CardContent>
