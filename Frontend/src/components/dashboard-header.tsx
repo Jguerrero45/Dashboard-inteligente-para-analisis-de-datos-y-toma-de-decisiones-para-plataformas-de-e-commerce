@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Menu, Moon, Sun, Coins, User, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,9 +30,46 @@ const navigationItems = [
 
 export function DashboardHeader() {
   const [isOpen, setIsOpen] = useState(false)
+  const [profileName, setProfileName] = useState<string | null>(null)
+  const [profileEmail, setProfileEmail] = useState<string | null>(null)
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
   const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
   const { currency, toggleCurrency, exchangeRate } = useCurrency()
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+        if (!token) return
+        const res = await fetch('/api/profile/', { headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-store' })
+        if (res.status === 401) {
+          // intentar refresh simple
+          const { refreshAccessToken } = await import('@/lib/auth')
+          const refreshed = await refreshAccessToken()
+          if (refreshed) {
+            const newToken = localStorage.getItem('access_token')
+            const r2 = await fetch('/api/profile/', { headers: { 'Authorization': `Bearer ${newToken}` }, cache: 'no-store' })
+            if (r2.ok) {
+              const d2 = await r2.json().catch(() => null)
+              setProfileName([(d2.first_name || ''), (d2.last_name || '')].filter(Boolean).join(' ').trim() || d2.username || null)
+              setProfileEmail(d2.email || null)
+              setProfileAvatar(d2.avatar_url || null)
+            }
+          }
+          return
+        }
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        setProfileName([(data.first_name || ''), (data.last_name || '')].filter(Boolean).join(' ').trim() || data.username || null)
+        setProfileEmail(data.email || null)
+        setProfileAvatar(data.avatar_url || null)
+      } catch (e) {
+        console.error('load profile header', e)
+      }
+    }
+    load()
+  }, [])
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -97,11 +134,16 @@ export function DashboardHeader() {
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
+            <DropdownMenuContent
+              className={`w-56 rounded-md shadow-sm border p-0 ${theme === 'dark' ? 'border-slate-800 text-slate-200' : 'border-border text-card-foreground'}`}
+              style={{ backgroundColor: theme === 'dark' ? 'hsl(var(--color-popover))' : 'hsl(var(--color-card))' }}
+              align="end"
+              forceMount
+            >
+              <DropdownMenuLabel className="font-normal p-3">
                 <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium leading-none">Admin Dashboard</p>
-                  <p className="text-xs leading-none text-muted-foreground">admin@ecommerce.com</p>
+                  <p className="text-sm font-medium leading-none">{profileName || 'Usuario'}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{profileEmail || '—'}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

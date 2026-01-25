@@ -143,10 +143,10 @@ export function ProductsChart() {
                     {indicesToUse.map((idx: number) => {
                       const m = months[idx]
                       return (
-                      <div key={m} className="flex items-center justify-between">
-                        <span className="font-medium">{m}</span>
-                        <span>{formatNumber(Number(s.monthly[idx] || 0))}</span>
-                      </div>
+                        <div key={m} className="flex items-center justify-between">
+                          <span className="font-medium">{m}</span>
+                          <span>{formatNumber(Number(s.monthly[idx] || 0))}</span>
+                        </div>
                       )
                     })}
                   </div>

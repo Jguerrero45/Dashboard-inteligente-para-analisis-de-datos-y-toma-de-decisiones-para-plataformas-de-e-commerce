@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
+import PasswordInput from "../components/ui/password-input"
 import { Button } from "../components/ui/button"
 import { Link, useNavigate } from "react-router-dom"
 
@@ -88,6 +89,7 @@ const Register: React.FC = () => {
     const [firstName, setFirstName] = useState("")
     const [lastName, setLastName] = useState("")
     const [company, setCompany] = useState("")
+    const [address, setAddress] = useState("")
     const [role, setRole] = useState("")
     const [phone, setPhone] = useState("")
     const [email, setEmail] = useState("")
@@ -124,7 +126,17 @@ const Register: React.FC = () => {
             return
         }
 
-        const payload = { username: email, email, password, password2: confirm }
+        const payload: any = {
+            username: email,
+            email,
+            password,
+            password2: confirm,
+            first_name: firstName,
+            last_name: lastName,
+            phone,
+            company,
+            address,
+        }
 
         try {
             const res = await fetch("/api/register/", {
@@ -180,13 +192,24 @@ const Register: React.FC = () => {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
+                                <label className="text-sm block mb-1">Compañía (opcional)</label>
+                                <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Mi empresa" />
+                            </div>
+                            <div>
+                                <label className="text-sm block mb-1">Dirección fiscal</label>
+                                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Calle, Ciudad, País" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
                                 <label className="text-sm block mb-1">Contraseña</label>
-                                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" />
+                                <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" />
                                 <p className="text-xs text-muted-foreground mt-1">Mínimo 8 caracteres.</p>
                             </div>
                             <div>
                                 <label className="text-sm block mb-1">Confirmar contraseña</label>
-                                <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="********" />
+                                <PasswordInput value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="********" />
                             </div>
                         </div>
 

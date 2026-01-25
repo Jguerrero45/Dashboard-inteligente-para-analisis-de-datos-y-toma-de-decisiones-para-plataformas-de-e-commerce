@@ -143,3 +143,29 @@
   background-color: transparent !important;
   /* keep inner elements transparent so outer background shows */
 }
+
+/* Recharts: asegurar que tooltips y el área resaltada (cursor) usan fondo sólido
+   igual al fondo de la página en ambos temas (claro/oscuro). Esto evita que el
+   recuadro aparezca transparente y haga difícil leer el texto. */
+.recharts-tooltip-wrapper .chart-tooltip-box {
+  background: var(--color-background) !important;
+  color: var(--color-foreground) !important;
+  opacity: 1 !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
+  padding: 0.5rem !important;
+  z-index: 5000 !important;
+}
+
+/* Cursor/área activa SVG específico de Recharts: usar el color de fondo de la página */
+.recharts-tooltip-cursor {
+  fill: var(--color-background) !important;
+  opacity: 1 !important;
+}
+
+/* Internals: si Recharts inserta elementos por defecto, aseguramos que el
+   contenedor use transparencia interna para permitir nuestro fondo sólido. */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: transparent !important;
+  color: var(--color-foreground) !important;
+}

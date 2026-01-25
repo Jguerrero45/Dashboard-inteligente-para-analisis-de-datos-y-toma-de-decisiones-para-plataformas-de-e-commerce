@@ -11,6 +11,13 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from .models import Clientes, Productos, Ventas, VentaItem
 
+# Personalizaciones del Admin
+# Cambiar el texto mostrado en el admin y la URL del enlace "Ver sitio"
+admin.site.site_header = "DIPPDE admin"
+admin.site.site_title = "DIPPDE admin"
+admin.site.index_title = "DIPPDE admin"
+admin.site.site_url = "http://localhost:5173"
+
 
 admin.site.register(Clientes)
 admin.site.register(Productos)

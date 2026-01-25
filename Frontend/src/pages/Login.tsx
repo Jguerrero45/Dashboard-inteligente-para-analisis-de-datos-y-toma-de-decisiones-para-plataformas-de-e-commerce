@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
+import PasswordInput from "../components/ui/password-input"
 import { Button } from "../components/ui/button"
 import { Link, useNavigate } from "react-router-dom"
 
@@ -64,12 +65,7 @@ const Login: React.FC = () => {
                         </div>
                         <div>
                             <label className="text-sm block mb-1">Contraseña</label>
-                            <Input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="********"
-                            />
+                            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" />
                         </div>
                         <div className="flex items-center gap-3">
                             <label className="flex items-center gap-3">

@@ -13,6 +13,7 @@ import Perfil from "./pages/Perfil"
 import Welcome from "./pages/Welcome"
 import Login from "./pages/Login"
 import Register from "./pages/Register"
+import Forgot from "./pages/Forgot"
 import Costos from "./pages/Costos"
 
 function App() {
@@ -44,6 +45,7 @@ function App() {
           <Route path="/perfil" element={<RequireAuth><Perfil /></RequireAuth>} />
           <Route path="/reportes" element={<RequireAuth><Reportes /></RequireAuth>} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot" element={<Forgot />} />
           <Route path="/register" element={<Register />} />
         </Routes>
       </BrowserRouter>

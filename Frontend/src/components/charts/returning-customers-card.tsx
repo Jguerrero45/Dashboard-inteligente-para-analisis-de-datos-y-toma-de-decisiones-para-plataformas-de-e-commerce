@@ -106,7 +106,14 @@ export function ReturningCustomersCard() {
                         <ChartContainer config={{ value: { label: "Recompra", color: "hsl(var(--chart-2))" } }} className="h-full">
                             <RadialBarChart innerRadius="60%" outerRadius="100%" data={chartData} startAngle={90} endAngle={-270} onMouseMove={onMove} onMouseLeave={() => { }}>
                                 <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-                                <Tooltip data={chartData} content={renderTooltipWithoutRange} cursor={{}} defaultIndex={0} shared={false} />
+                                <Tooltip
+                                    data={chartData}
+                                    content={renderTooltipWithoutRange}
+                                    cursor={{ fill: 'var(--color-background)', opacity: 1 }}
+                                    wrapperStyle={{ background: 'var(--color-background)', color: 'var(--color-foreground)', opacity: 1 }}
+                                    defaultIndex={0}
+                                    shared={false}
+                                />
                                 <RadialBar dataKey="value" background fill="hsl(var(--chart-2))" />
                             </RadialBarChart>
                         </ChartContainer>

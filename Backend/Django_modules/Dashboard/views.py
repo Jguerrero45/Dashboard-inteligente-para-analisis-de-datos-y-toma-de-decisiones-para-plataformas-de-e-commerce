@@ -3,6 +3,7 @@ from rest_framework import generics, permissions
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework import status
+import logging
 from django.shortcuts import render
 from .models import Clientes, Productos, Ventas, RecomendacionIA, VentaItem, Tasa, Store
 from .serializer import (
@@ -36,6 +37,7 @@ from .services.gemini_client import (
 )
 from django.db.models import DecimalField, ExpressionWrapper
 from .models import UserProfile
+from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
@@ -151,6 +153,7 @@ class Tasa_ViewSet(viewsets.ModelViewSet):
 
 class StoreViewSet(viewsets.ModelViewSet):
     """CRUD para las tiendas (Store). Cada usuario administra sus propias tiendas."""
+    # Requerimos autenticación para crear/editar; lectura es pública.
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     serializer_class = StoreSerializer
 
@@ -163,6 +166,11 @@ class StoreViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         store = serializer.save(owner=self.request.user)
+        try:
+            logging.getLogger(__name__).info(
+                f"Store created id={store.id} owner={getattr(self.request.user, 'username', None)} api_url={store.api_url}")
+        except Exception:
+            pass
         # Al crear una tienda, establecerla como tienda seleccionada del perfil
         try:
             profile, _ = UserProfile.objects.get_or_create(
@@ -171,6 +179,43 @@ class StoreViewSet(viewsets.ModelViewSet):
             profile.save(update_fields=['selected_store'])
         except Exception:
             pass
+
+    def create(self, request, *args, **kwargs):
+        """Crear una tienda.
+
+        - Normaliza `api_url` si el usuario no incluyó el esquema (añade https://).
+        - Devuelve errores de validación claros cuando corresponda.
+        - Requiere usuario autenticado.
+        """
+        user = getattr(request, 'user', None)
+        try:
+            logging.getLogger(__name__).info(
+                f"Store create called by user={getattr(user, 'username', None)} data={dict(request.data or {})}")
+        except Exception:
+            pass
+        if not (user and getattr(user, 'is_authenticated', False)):
+            return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        data = request.data.copy() if request.data is not None else {}
+        api_url = data.get('api_url') or data.get('apiUrl') or ''
+        if isinstance(api_url, str) and api_url and not api_url.startswith(('http://', 'https://')):
+            # Prepend https:// for convenience (frontend users often escriben dominio sin esquema)
+            data['api_url'] = f'https://{api_url}'
+
+        serializer = self.get_serializer(data=data)
+        # Validación explícita: registrar errores para facilitar debugging
+        if not serializer.is_valid():
+            try:
+                logging.getLogger(__name__).warning(
+                    f"Store serializer invalid: {serializer.errors}")
+            except Exception:
+                pass
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Llamar a perform_create para aplicar la lógica existente (owner + profile)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class RecomendacionIA_ViewSet(viewsets.ModelViewSet):
@@ -1626,6 +1671,15 @@ class ProfileView(APIView):
             except Exception:
                 selected_store = None
 
+        # además devolver la lista de tiendas del usuario para el frontend
+        stores_list = []
+        try:
+            stores_qs = Store.objects.filter(owner=user).order_by('-creado_en')
+            stores_list = [{'id': s.id, 'name': s.name,
+                            'api_url': s.api_url} for s in stores_qs]
+        except Exception:
+            stores_list = []
+
         return Response({
             'username': user.username,
             'first_name': user.first_name,
@@ -1636,6 +1690,7 @@ class ProfileView(APIView):
             'address': profile.address,
             'avatar_url': avatar_url,
             'selected_store': selected_store,
+            'stores': stores_list,
         })
 
     def put(self, request):
@@ -1657,6 +1712,36 @@ class ProfileView(APIView):
                 profile.selected_store = store
             except Store.DoesNotExist:
                 profile.selected_store = None
+        # permitir cambiar contraseña mediante los campos `password` y `password2`
+        password = data.get('password')
+        password2 = data.get('password2')
+        current_password = data.get('current_password')
+        password_errors = None
+        if password or password2:
+            # exigir la contraseña actual para confirmar identidad
+            if not current_password:
+                password_errors = 'La contraseña actual es requerida para cambiar la contraseña.'
+            elif not user.check_password(current_password):
+                password_errors = 'La contraseña actual es incorrecta.'
+            elif not password or not password2:
+                password_errors = 'Ambos campos de contraseña son requeridos.'
+            elif password != password2:
+                password_errors = 'Las contraseñas no coinciden.'
+            else:
+                # validar fuerza de contraseña
+                try:
+                    validate_password(password, user=user)
+                except Exception as e:
+                    try:
+                        password_errors = list(e.messages)
+                    except Exception:
+                        password_errors = str(e)
+                if not password_errors:
+                    user.set_password(password)
+        # si hubo errores de contraseña, no guardar y devolver 400
+        if password_errors:
+            return Response({'password': password_errors}, status=status.HTTP_400_BAD_REQUEST)
+
         user.save()
         profile.save()
         avatar_url = f"{settings.MEDIA_URL}{profile.avatar_path}" if profile.avatar_path else None

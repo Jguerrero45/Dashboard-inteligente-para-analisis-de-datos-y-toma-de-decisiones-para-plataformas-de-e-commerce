@@ -59,11 +59,8 @@ const Welcome: React.FC = () => {
                 <Link to="/register">
                   <Button className="px-6 py-2.5">Comenzar ahora</Button>
                 </Link>
-                <Link to="/dashboard">
-                  <Button variant="outline" className="px-6 py-2.5">Ver demo en vivo</Button>
-                </Link>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  Sin tarjeta de crédito. Entorno de prueba con datos reales.
+                  Sin tarjeta de crédito.
                 </p>
               </div>
 

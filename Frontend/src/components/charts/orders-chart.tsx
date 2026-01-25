@@ -115,11 +115,11 @@ export function OrdersChart() {
                     {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
                 </div>
                 <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                        <LineChart data={displayData} onMouseMove={onMove} onMouseLeave={() => { }}>
+                    <LineChart data={displayData} onMouseMove={onMove} onMouseLeave={() => { }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis dataKey="month" className="text-xs" />
                         <YAxis className="text-xs" />
-                            <Tooltip data={displayData} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, displayData.length - 1)} shared={true} />
+                        <Tooltip data={displayData} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, displayData.length - 1)} shared={true} />
                         <Line type="monotone" dataKey="orders" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6, stroke: 'hsl(var(--chart-3))', strokeWidth: 2, fill: 'white' }} />
                     </LineChart>
                 </ChartContainer>

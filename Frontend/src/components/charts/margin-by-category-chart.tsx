@@ -80,30 +80,30 @@ export function MarginByCategoryChart() {
                 </div>
             </CardHeader>
             <CardContent>
-                        <div className="flex items-center gap-2 mb-2">
-                            <label className="text-sm">Mes</label>
-                            <select
-                                value={month}
-                                onChange={(e) => setMonth(e.target.value)}
-                                className="rounded px-2 py-1"
-                                style={{
-                                    backgroundColor: 'hsl(var(--color-popover))',
-                                    color: 'hsl(var(--color-popover-foreground))',
-                                    borderColor: 'hsl(var(--color-border))',
-                                }}
-                            >
-                                {Array.from({ length: 12 }).map((_, i) => {
-                                    const d = subMonths(new Date(), i)
-                                    const key = format(d, 'yyyy-MM')
-                                    const label = format(d, 'MMM yyyy')
-                                    return <option key={key} value={key}>{label}</option>
-                                })}
-                            </select>
-                            <Button variant="outline" size="sm" onClick={() => load(month)} className="ml-2">Aplicar</Button>
-                            <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); load(m); }} className="ml-2">Reset</Button>
-                            {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
-                            {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
-                        </div>
+                <div className="flex items-center gap-2 mb-2">
+                    <label className="text-sm">Mes</label>
+                    <select
+                        value={month}
+                        onChange={(e) => setMonth(e.target.value)}
+                        className="rounded px-2 py-1"
+                        style={{
+                            backgroundColor: 'hsl(var(--color-popover))',
+                            color: 'hsl(var(--color-popover-foreground))',
+                            borderColor: 'hsl(var(--color-border))',
+                        }}
+                    >
+                        {Array.from({ length: 12 }).map((_, i) => {
+                            const d = subMonths(new Date(), i)
+                            const key = format(d, 'yyyy-MM')
+                            const label = format(d, 'MMM yyyy')
+                            return <option key={key} value={key}>{label}</option>
+                        })}
+                    </select>
+                    <Button variant="outline" size="sm" onClick={() => load(month)} className="ml-2">Aplicar</Button>
+                    <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); load(m); }} className="ml-2">Reset</Button>
+                    {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
+                    {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+                </div>
                 <ChartContainer config={{ marginPct: { label: "Margen %", color: "hsl(var(--chart-4))" } }} className="h-[320px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={sorted} margin={{ bottom: 24 }} onMouseMove={onMove} onMouseLeave={() => { }}>

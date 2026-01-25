@@ -166,10 +166,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True, required=True)
     email = serializers.EmailField(required=True, validators=[
                                    UniqueValidator(queryset=User.objects.all())])
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
+    company = serializers.CharField(required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'password2')
+        fields = ('id', 'username', 'email', 'password', 'password2',
+                  'first_name', 'last_name', 'phone', 'company', 'address')
 
     def validate(self, attrs):
         if attrs.get('password') != attrs.get('password2'):
@@ -185,11 +191,21 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        # Extra: extra profile fields
+        phone = validated_data.pop('phone', '')
+        company = validated_data.pop('company', '')
+        address = validated_data.pop('address', '')
         validated_data.pop('password2', None)
         password = validated_data.pop('password')
         user = User(**validated_data)
         user.set_password(password)
         user.save()
+        try:
+            UserProfile.objects.create(
+                user=user, phone=phone or '', company=company or '', address=address or '')
+        except Exception:
+            # fallback: ignore profile creation errors but log if needed
+            pass
         return user
 
 

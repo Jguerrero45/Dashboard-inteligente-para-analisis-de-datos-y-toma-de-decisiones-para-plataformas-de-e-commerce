@@ -126,7 +126,14 @@ export function TopProductsChart() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" />
               <YAxis dataKey="producto" type="category" width={100} />
-              <Tooltip data={chartData} content={renderTooltipWithoutRange} formatter={(value: number) => formatPrice(value)} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={0} shared={false} />
+              <Tooltip
+                data={chartData}
+                content={renderTooltipWithoutRange}
+                formatter={(value: number) => formatPrice(value)}
+                wrapperStyle={{ background: 'var(--color-background)', color: 'var(--color-foreground)', opacity: 1 }}
+                defaultIndex={0}
+                shared={false}
+              />
               <Bar dataKey="ventas" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} name="Ventas" activeBar={{ stroke: 'hsl(var(--chart-1))', strokeWidth: 3 }} />
             </BarChart>
           </ResponsiveContainer>

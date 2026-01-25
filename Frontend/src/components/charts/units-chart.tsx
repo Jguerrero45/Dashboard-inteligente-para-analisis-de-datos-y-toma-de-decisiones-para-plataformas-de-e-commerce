@@ -55,7 +55,14 @@ export function UnitsChart() {
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis dataKey="month" className="text-xs" />
                         <YAxis className="text-xs" />
-                        <Tooltip data={data} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, data.length - 1)} shared={true} />
+                        <Tooltip
+                            data={data}
+                            content={renderTooltipWithoutRange}
+                            cursor={{ fill: 'var(--color-background)', opacity: 1, stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }}
+                            wrapperStyle={{ background: 'var(--color-background)', color: 'var(--color-foreground)', opacity: 1 }}
+                            defaultIndex={Math.max(0, data.length - 1)}
+                            shared={true}
+                        />
                         <Area
                             type="monotone"
                             dataKey="units"
