@@ -1044,7 +1044,11 @@ class ExportCSVView(View, ExportMixin):
                 # format datetimes/decimals
                 if isinstance(val, (datetime.date, datetime.datetime)):
                     val = val.isoformat()
-                row.append(str(val) if val is not None else '')
+                # normalize blanks
+                if val is None or val == '' or (isinstance(val, str) and val.strip() == ''):
+                    row.append('N/A')
+                else:
+                    row.append(str(val))
             writer.writerow(row)
 
         resp = HttpResponse(buffer.getvalue(), content_type='text/csv')
@@ -1068,12 +1072,33 @@ class ExportPDFView(View, ExportMixin):
         # choose entity
         if tipo == 'productos':
             qs = self.get_products_qs(request)
-            context = {'products': qs, 'now': datetime.datetime.utcnow()}
+            products = []
+            for p in qs:
+                products.append({
+                    'id': p.id,
+                    'nombre': p.nombre or 'N/A',
+                    'categoria': p.categoria or 'N/A',
+                    'precio': p.precio if p.precio not in [None, ''] else 0,
+                    'stock': p.stock if getattr(p, 'stock', None) not in [None, ''] else 0,
+                    'costo': getattr(p, 'costo', None) if getattr(p, 'costo', None) not in [None, ''] else 0,
+                })
+            context = {'products': products, 'now': datetime.datetime.utcnow()}
             template_name = 'report_products.html'
             entity_label = 'productos'
         elif tipo == 'clientes':
             qs = self.get_clients_qs(request)
-            context = {'clients': qs, 'now': datetime.datetime.utcnow()}
+            clients = []
+            for c in qs:
+                clients.append({
+                    'id': c.id,
+                    'nombre': c.nombre or 'N/A',
+                    'apellido': c.apellido or 'N/A',
+                    'correo': c.correo or 'N/A',
+                    'telefono': c.telefono or 'N/A',
+                    'fecha_registro': c.fecha_registro.isoformat() if c.fecha_registro else 'N/A',
+                    'tipo_cliente': getattr(c, 'tipo_cliente', None) or 'N/A',
+                })
+            context = {'clients': clients, 'now': datetime.datetime.utcnow()}
             template_name = 'report_clients.html'
             entity_label = 'clientes'
 
