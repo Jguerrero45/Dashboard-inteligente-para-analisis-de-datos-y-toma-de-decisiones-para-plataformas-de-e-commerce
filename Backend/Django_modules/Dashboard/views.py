@@ -38,6 +38,14 @@ from .models import UserProfile
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+
+def _user_in_group(user, name: str) -> bool:
+    try:
+        return bool(user and user.is_authenticated and user.groups.filter(name=name).exists())
+    except Exception:
+        return False
+
+
 MONTH_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May",
                    "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
@@ -65,6 +73,7 @@ class Clientes_ViewSet(viewsets.ModelViewSet):
             gasto_total=Sum('ventas__precio_total'),
             ultima_compra=Max('ventas__fecha')
         ).order_by('-id')
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
 class Productos_ViewSet(viewsets.ModelViewSet):
@@ -88,6 +97,7 @@ class Productos_ViewSet(viewsets.ModelViewSet):
             ultima_venta=Max('venta_items__venta__fecha',
                              filter=completed_filter)
         ).order_by('-id')
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
 class Ventas_ViewSet(viewsets.ModelViewSet):
@@ -98,17 +108,19 @@ class Ventas_ViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Evitar N+1: traer cliente y items + producto de cada item
         return Ventas.objects.select_related('cliente').prefetch_related('items__producto').order_by('-fecha')
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
 class Tasa_ViewSet(viewsets.ModelViewSet):
     """ViewSet para el modelo Tasa."""
     queryset = Tasa.objects.all().order_by('-fecha')
     serializer_class = Tasa_Serializers
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
 class StoreViewSet(viewsets.ModelViewSet):
     """CRUD para las tiendas (Store). Cada usuario administra sus propias tiendas."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     serializer_class = StoreSerializer
 
     def get_queryset(self):
@@ -133,8 +145,13 @@ class StoreViewSet(viewsets.ModelViewSet):
 class RecomendacionIA_ViewSet(viewsets.ModelViewSet):
     queryset = RecomendacionIA.objects.all()
     serializer_class = RecomendacionIA_Serializers
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
+        # Solo superuser y Gerente pueden generar (crear) recomendaciones
+        user = getattr(request, 'user', None)
+        if not (getattr(user, 'is_superuser', False) or _user_in_group(user, 'Gerente')):
+            return Response({'detail': 'No tiene permiso para generar recomendaciones IA.'}, status=status.HTTP_403_FORBIDDEN)
         """Permite autocompletar el producto desde metadatos/card cuando no viene explícito."""
         data = request.data.copy() if request.data else {}
 
@@ -172,6 +189,7 @@ class RecomendacionIA_ViewSet(viewsets.ModelViewSet):
 class VentaItem_ViewSet(viewsets.ModelViewSet):
     queryset = VentaItem.objects.all()
     serializer_class = VentaItem_Serializers
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class RegisterView(generics.CreateAPIView):
@@ -226,6 +244,11 @@ class AIRecommendationsView(APIView):
         except Exception:
             limit = None
 
+        # Permisos: solo superuser y Gerente pueden generar recomendaciones
+        user = getattr(request, 'user', None)
+        if not (getattr(user, 'is_superuser', False) or _user_in_group(user, 'Gerente')):
+            return Response({'detail': 'No tiene permiso para generar recomendaciones IA.'}, status=status.HTTP_403_FORBIDDEN)
+
         # Invocar servicio Gemini
         try:
             payload = {
@@ -277,7 +300,7 @@ class ProductsGrowthView(APIView):
             it.get('revenue') or 0) for it in items_prev}
 
         rows = []
-        product_names = {it['producto__id']                         : it['producto__nombre'] for it in items_now}
+        product_names = {it['producto__id']: it['producto__nombre'] for it in items_now}
         product_names.update(
             {it['producto__id']: it['producto__nombre'] for it in items_prev})
 
@@ -364,6 +387,11 @@ class ExportCostTemplateView(View):
     """Exporta una plantilla CSV con nombres de productos y columna 'costo' vacía."""
 
     def get(self, request):
+        # Sólo superuser o Gerente pueden exportar plantilla de costos
+        user = getattr(request, 'user', None)
+        if not (getattr(user, 'is_superuser', False) or _user_in_group(user, 'Gerente')):
+            return JsonResponse({'detail': 'No tiene permiso para acceder a esta plantilla.'}, status=status.HTTP_403_FORBIDDEN)
+
         products = Productos.objects.all().order_by('nombre')
         buffer = io.StringIO()
         writer = csv.writer(buffer)
@@ -380,6 +408,10 @@ class ImportCostsView(APIView):
     """Importa costos desde un CSV con columnas: nombre,costo."""
 
     def post(self, request):
+        user = getattr(request, 'user', None)
+        if not (getattr(user, 'is_superuser', False) or _user_in_group(user, 'Gerente')):
+            return Response({'detail': 'No tiene permiso para importar costos.'}, status=status.HTTP_403_FORBIDDEN)
+
         file = request.FILES.get('file') or request.FILES.get('csv')
         if not file:
             return Response({'detail': 'Archivo CSV no recibido (use campo "file").'}, status=status.HTTP_400_BAD_REQUEST)
@@ -984,6 +1016,11 @@ class ExportCSVView(View, ExportMixin):
 class ExportPDFView(View, ExportMixin):
     # Django View to avoid DRF content-negotiation rejecting PDF Accept header
     def get(self, request):
+        # Requerir autenticación
+        user = getattr(request, 'user', None)
+        if not (user and user.is_authenticated):
+            return JsonResponse({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
+
         params = getattr(request, 'GET', None) or getattr(
             request, 'query_params', None) or {}
         tipo = params.get('tipo', 'productos')
