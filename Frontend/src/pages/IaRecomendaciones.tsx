@@ -11,6 +11,7 @@ type Product = { id: number; nombre: string; categoria: string }
 
 export default function IaRecomendacionesPage() {
     const API_BASE = getApiBase()
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
     const [response, setResponse] = useState("")
     const [loading, setLoading] = useState(false)
     const [fetchingProducts, setFetchingProducts] = useState(false)
@@ -100,7 +101,7 @@ export default function IaRecomendacionesPage() {
         try {
             const res = await fetch(`${API_BASE}/ai/recommendations/`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify(payload),
             })
 
@@ -182,7 +183,7 @@ export default function IaRecomendacionesPage() {
 
             const res = await fetch(`${API_BASE}/recomendaciones/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify(body),
             })
             if (!res.ok) {
@@ -213,7 +214,8 @@ export default function IaRecomendacionesPage() {
     // Cargar recomendaciones guardadas desde backend y mapear a UI
     async function loadRecommendations() {
         try {
-            const res = await fetch(`${API_BASE}/recomendaciones/`)
+            const headers = token ? { Authorization: `Bearer ${token}` } : undefined
+            const res = await fetch(`${API_BASE}/recomendaciones/`, { headers })
             if (!res.ok) throw new Error(`Error ${res.status}`)
             const data = await res.json()
             if (Array.isArray(data)) {
@@ -348,7 +350,8 @@ export default function IaRecomendacionesPage() {
                                 return
                             }} onDelete={async (id: number) => {
                                 try {
-                                    const res = await fetch(`${API_BASE}/recomendaciones/${id}/`, { method: 'DELETE' })
+                                    const headers = token ? { Authorization: `Bearer ${token}` } : undefined
+                                    const res = await fetch(`${API_BASE}/recomendaciones/${id}/`, { method: 'DELETE', headers })
                                     if (!res.ok) throw new Error(`Error ${res.status}`)
                                     setRecommendations((prev) => prev.filter((r: any) => r.id !== id))
                                 } catch (e) {

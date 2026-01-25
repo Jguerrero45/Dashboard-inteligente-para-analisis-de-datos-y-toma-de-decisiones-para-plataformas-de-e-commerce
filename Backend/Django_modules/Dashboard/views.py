@@ -1,5 +1,6 @@
 from rest_framework import viewsets
 from rest_framework import generics, permissions
+from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import render
@@ -43,6 +44,36 @@ def _user_in_group(user, name: str) -> bool:
     try:
         return bool(user and user.is_authenticated and user.groups.filter(name=name).exists())
     except Exception:
+        return False
+
+
+class IsGerenteOrReadOnly(BasePermission):
+    """Permiso: solo Gerente o superuser puede usar métodos no seguros sobre Productos.
+
+    - GET/HEAD/OPTIONS quedan permitidos para todos (read-only).
+    - Métodos como POST/PUT/PATCH/DELETE requieren que el usuario sea superuser
+      o pertenezca al grupo 'Gerente' o tenga el permiso 'change_productos'.
+    """
+
+    def has_permission(self, request, view):
+        # permitir lectura a cualquiera
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        if getattr(user, 'is_superuser', False):
+            return True
+        # Chequear pertenencia a grupo Gerente
+        if _user_in_group(user, 'Gerente'):
+            return True
+        # Chequear permiso explícito (intentar con mayúscula/minúscula de app label)
+        try:
+            if user.has_perm('Dashboard.change_productos') or user.has_perm('dashboard.change_productos'):
+                return True
+        except Exception:
+            pass
         return False
 
 
@@ -97,7 +128,7 @@ class Productos_ViewSet(viewsets.ModelViewSet):
             ultima_venta=Max('venta_items__venta__fecha',
                              filter=completed_filter)
         ).order_by('-id')
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsGerenteOrReadOnly]
 
 
 class Ventas_ViewSet(viewsets.ModelViewSet):
@@ -300,7 +331,8 @@ class ProductsGrowthView(APIView):
             it.get('revenue') or 0) for it in items_prev}
 
         rows = []
-        product_names = {it['producto__id']: it['producto__nombre'] for it in items_now}
+        product_names = {it['producto__id']
+            : it['producto__nombre'] for it in items_now}
         product_names.update(
             {it['producto__id']: it['producto__nombre'] for it in items_prev})
 
@@ -618,8 +650,10 @@ class TopCustomersMonthlyView(APIView):
         # Limit top customers within the selected year/window
         sales_filter = Q(estado=Ventas.ESTADO_COMPLETADA)
         if target_year:
-            start_year = timezone.datetime(year=target_year, month=1, day=1).date()
-            end_year = timezone.datetime(year=target_year + 1, month=1, day=1).date()
+            start_year = timezone.datetime(
+                year=target_year, month=1, day=1).date()
+            end_year = timezone.datetime(
+                year=target_year + 1, month=1, day=1).date()
             sales_filter &= Q(fecha__gte=start_year, fecha__lt=end_year)
 
         top_qs = (

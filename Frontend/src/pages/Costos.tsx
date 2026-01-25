@@ -12,6 +12,8 @@ import { DashboardFooter } from "@/components/dashboard-footer"
 
 export default function Costos() {
     const { formatPrice } = useCurrency()
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined
     const [productos, setProductos] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -69,7 +71,7 @@ export default function Costos() {
         try {
             const fd = new FormData()
             fd.append('file', file)
-            const res = await fetch('/api/productos/costos/importar/', { method: 'POST', body: fd })
+            const res = await fetch('/api/productos/costos/importar/', { method: 'POST', body: fd, headers: authHeaders })
             const data = await res.json().catch(() => ({}))
             if (!res.ok) {
                 throw new Error(data.detail || 'Error al importar costos')
@@ -110,9 +112,10 @@ export default function Costos() {
         // Confirmar guardado
         if (!confirm('¿Estás seguro que deseas guardar el cambio de costo?')) return
         try {
+            const headers = authHeaders ? { 'Content-Type': 'application/json', ...authHeaders } : { 'Content-Type': 'application/json' }
             const res = await fetch(`/api/Productos/${productoId}/`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify(payload),
             })
             const d = await res.json().catch(() => ({}))

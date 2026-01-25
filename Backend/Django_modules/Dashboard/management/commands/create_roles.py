@@ -50,3 +50,14 @@ class Command(BaseCommand):
             if model.__name__ in empleado_allowed:
                 for p in view_perms:
                     empleado.permissions.add(p)
+
+            # Permitir al Gerente modificar únicamente Productos (costo u otros cambios necesarios)
+            try:
+                productos_ct = ContentType.objects.get(
+                    app_label='Dashboard', model__iexact='productos')
+                change_product_perm = Permission.objects.filter(
+                    content_type=productos_ct, codename='change_productos').first()
+                if change_product_perm:
+                    gerente.permissions.add(change_product_perm)
+            except Exception:
+                pass
