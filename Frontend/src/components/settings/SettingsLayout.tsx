@@ -15,17 +15,17 @@ export default function SettingsLayout({ sections }: { sections: Section[] }) {
     const activeSection = sections.find((s) => s.key === active) ?? sections[0]
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <aside className="md:col-span-1">
+        <div className="w-full py-4">
+            <div className="max-w-3xl mx-auto">
                 <Card>
                     <CardContent className="pt-4">
-                        <div className="flex flex-col gap-2">
+                        <div className="flex gap-2 justify-center">
                             {sections.map((s) => (
                                 <Button
                                     key={s.key}
-                                    variant={s.key === active ? "secondary" : "ghost"}
+                                    variant={s.key === active ? "secondary" : "outline"}
                                     onClick={() => setActive(s.key)}
-                                    className="w-full justify-start text-sm"
+                                    className="whitespace-nowrap text-sm"
                                 >
                                     {s.label}
                                 </Button>
@@ -33,11 +33,11 @@ export default function SettingsLayout({ sections }: { sections: Section[] }) {
                         </div>
                     </CardContent>
                 </Card>
-            </aside>
 
-            <section className="md:col-span-3">
-                <div className="space-y-4">{activeSection?.content}</div>
-            </section>
+                <section className="mt-4">
+                    <div className="space-y-4">{activeSection?.content}</div>
+                </section>
+            </div>
         </div>
     )
 }

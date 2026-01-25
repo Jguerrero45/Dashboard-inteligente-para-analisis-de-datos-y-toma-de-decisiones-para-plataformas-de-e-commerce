@@ -36,7 +36,7 @@ export default function IntegrationsSettings() {
                         <p className="font-medium">Slack / Webhook</p>
                         <div className="mt-2 flex gap-2">
                             <Input placeholder="https://hooks.slack.com/services/..." value={slackWebhook} onChange={(e) => setSlackWebhook(e.target.value)} />
-                            <Button onClick={() => alert("Probar webhook: " + slackWebhook)} className="bg-emerald-600 hover:bg-emerald-700 text-white">Probar</Button>
+                            <Button onClick={() => alert("Probar webhook: " + slackWebhook)} variant="secondary">Probar</Button>
                         </div>
                     </div>
 
@@ -54,7 +54,7 @@ export default function IntegrationsSettings() {
                             </div>
                         </div>
                         <div className="mt-3">
-                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">Crear nueva API Key</Button>
+                            <Button variant="secondary">Crear nueva API Key</Button>
                         </div>
                     </div>
 
@@ -66,7 +66,7 @@ export default function IntegrationsSettings() {
                     </div>
 
                     <div className="flex gap-2">
-                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">Guardar integraciones</Button>
+                        <Button variant="secondary">Guardar integraciones</Button>
                         <Button variant="ghost">Restaurar</Button>
                     </div>
                 </div>

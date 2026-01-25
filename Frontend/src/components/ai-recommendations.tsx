@@ -72,8 +72,8 @@ export function AIRecommendations({ recommendations: propRecommendations, onRefr
         </div>
         <div className="flex items-center gap-2">
           <Input type="date" value={filterDate} onChange={(e: any) => setFilterDate(e.target.value)} />
-          <Button onClick={handleRefresh} variant="outline">
-            <RefreshCw className="mr-2 h-4 w-4" />
+          <Button onClick={handleRefresh} variant="outline" className="border-blue-400 text-blue-600 hover:bg-blue-50">
+            <RefreshCw className="mr-2 h-4 w-4 text-blue-600" />
             {isRefreshing ? "Actualizando…" : "Actualizar"}
           </Button>
         </div>

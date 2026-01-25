@@ -309,10 +309,10 @@ export default function IaRecomendacionesPage() {
                                         )}
 
                                         <div className="flex items-center gap-2">
-                                            <Button onClick={generateByFilters} disabled={loading || !selectedProduct}>
+                                            <Button onClick={generateByFilters} disabled={loading || !selectedProduct} variant="outline" className="text-green-500">
                                                 Generar
                                             </Button>
-                                            <Button variant="ghost" onClick={() => { setSelectedCategory(categories[0]?.id || ""); setSelectedProduct(""); setResponse("") }}>
+                                            <Button variant="outline" onClick={() => { setSelectedCategory(categories[0]?.id || ""); setSelectedProduct(""); setResponse("") }} className="border-red text-red-400">
                                                 Limpiar
                                             </Button>
                                         </div>
@@ -332,10 +332,10 @@ export default function IaRecomendacionesPage() {
                                         )}
 
                                         <div className="flex items-center gap-2">
-                                            <Button onClick={saveResponseToRecommendations} disabled={!response || response.trim() === ""}>
+                                            <Button onClick={saveResponseToRecommendations} disabled={!response || response.trim() === ""} variant="outline" className="text-green-500">
                                                 Guardar respuesta
                                             </Button>
-                                            <Button variant="ghost" onClick={() => setResponse("")}>Limpiar respuesta</Button>
+                                            <Button variant="outline" onClick={() => setResponse("")} className=" text-red-400">Limpiar respuesta</Button>
                                         </div>
                                     </div>
                                 </CardContent>

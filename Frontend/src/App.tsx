@@ -22,6 +22,11 @@ function App() {
     return isAuth ? <Navigate to="/dashboard" replace /> : <Welcome />
   }
 
+  const RequireAuth: React.FC<{ children: JSX.Element }> = ({ children }) => {
+    const isAuth = typeof window !== "undefined" && localStorage.getItem("isAuthenticated") === "true"
+    return isAuth ? children : <Navigate to="/login" replace />
+  }
+
   return (
     // Usar attribute="class" para que next-themes añada la clase `dark` al <html>
     <ThemeProvider attribute="class" defaultTheme="light" storageKey="vite-ui-theme">
@@ -29,15 +34,15 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<AuthRedirect />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/modulos" element={<Modulos />} />
-          <Route path="/productos" element={<Productos />} />
-          <Route path="/ventas" element={<Ventas />} />
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/costos" element={<Costos />} />
-          <Route path="/ia-recomendaciones" element={<IaRecomendaciones />} />
-          <Route path="/perfil" element={<Perfil />} />
-          <Route path="/reportes" element={<Reportes />} />
+          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="/modulos" element={<RequireAuth><Modulos /></RequireAuth>} />
+          <Route path="/productos" element={<RequireAuth><Productos /></RequireAuth>} />
+          <Route path="/ventas" element={<RequireAuth><Ventas /></RequireAuth>} />
+          <Route path="/clientes" element={<RequireAuth><Clientes /></RequireAuth>} />
+          <Route path="/costos" element={<RequireAuth><Costos /></RequireAuth>} />
+          <Route path="/ia-recomendaciones" element={<RequireAuth><IaRecomendaciones /></RequireAuth>} />
+          <Route path="/perfil" element={<RequireAuth><Perfil /></RequireAuth>} />
+          <Route path="/reportes" element={<RequireAuth><Reportes /></RequireAuth>} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Routes>

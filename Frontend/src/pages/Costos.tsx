@@ -267,7 +267,7 @@ export default function Costos() {
                                                     <TableCell>
                                                         {editingId === p.id ? (
                                                             <div className="flex items-center gap-2">
-                                                                <Button variant="default" size="sm" onClick={() => saveCosto(p.id)}>
+                                                                <Button variant="secondary" size="sm" onClick={() => saveCosto(p.id)}>
                                                                     <Check className="mr-2 h-4 w-4" /> Guardar
                                                                 </Button>
                                                                 <Button variant="outline" size="sm" onClick={cancelEdit}>

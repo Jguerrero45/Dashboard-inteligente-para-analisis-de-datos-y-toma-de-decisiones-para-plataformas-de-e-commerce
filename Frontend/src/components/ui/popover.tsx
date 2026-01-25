@@ -61,7 +61,7 @@ export const PopoverTrigger = React.forwardRef<HTMLElement, { children: React.Re
         }
 
         return (
-            <button ref={(node) => setRefs(node as any)} onClick={handleClick} type="button">
+            <button ref={(node) => setRefs(node as any)} onClick={handleClick} type="button" className="inline-flex items-center justify-center text-slate-800 dark:text-white hover:bg-muted rounded-md">
                 {children}
             </button>
         )

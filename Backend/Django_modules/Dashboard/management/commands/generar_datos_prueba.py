@@ -54,6 +54,16 @@ class Command(BaseCommand):
             "Alimentos",
         ]
 
+        # Códigos cortos por categoría para el sufijo -OS-
+        categoria_codigos = {
+            'Electrónica': 'EL',
+            'Moda': 'MO',
+            'Hogar': 'HO',
+            'Deportes': 'DE',
+            'Belleza': 'BE',
+            'Alimentos': 'AL',
+        }
+
         # Crear clientes con distribución controlada
         clientes = []
         telefonos_prefijos = ['424', '414', '422', '412', '416', '426']
@@ -179,6 +189,18 @@ class Command(BaseCommand):
             categorias_n[cat_choice] += 1
 
         nombres_generados = set()
+        # secuencia única para los códigos numéricos ### (3 dígitos)
+        producto_seq = 1
+        # preparar factor de ventas por categoría (volumen relativo)
+        # Alimentos venden mucho por volumen, Electrónica vende menos unidades
+        categoria_peso_ventas = {
+            'Alimentos': 4.0,
+            'Belleza': 2.0,
+            'Moda': 1.8,
+            'Hogar': 1.4,
+            'Deportes': 1.0,
+            'Electrónica': 0.6,
+        }
         # Preparar distribución de stock globalmente para cumplir porcentajes
         total_productos = sum(categorias_n.values())
         n_no_stock = int(round(total_productos * 0.06))  # 6% sin stock
@@ -197,15 +219,15 @@ class Command(BaseCommand):
         for cat, count in categorias_n.items():
             ejemplos = ejemplos_por_categoria.get(cat, [])
             for i in range(count):
-                # escoger nombre base y añadir variante (modelo/codigo) para variedad
+                # escoger nombre base y formar nombre con formato: Base -OS-###
                 base = random.choice(ejemplos)
-                variante = fake.lexify(text='-??-###')
-                nombre = f"{base} {variante}"
-                # evitar duplicados
+                code = categoria_codigos.get(cat, 'XX')
+                nombre = f"{base} -{code}-{producto_seq:03d}"
+                # evitar duplicados forzando el sufijo si hiciera falta
                 if nombre in nombres_generados:
-                    nombre = f"{base} {variante}-{i}"
+                    nombre = f"{base} -{code}-{producto_seq:03d}-{i}"
                 nombres_generados.add(nombre)
-
+                producto_seq += 1
                 # precios lógicos por categoría (rangos en USD)
                 if cat == 'Electrónica':
                     precio = round(random.uniform(50.0, 2000.0), 2)
@@ -222,14 +244,11 @@ class Command(BaseCommand):
 
                 # costo y utilidad se omiten: fueron removidos del modelo
 
-                # cantidad vendida histórica (para definir tendencia)
-                # ahora el máximo de vendidos es 250
-                vendidos_count = random.randint(0, 250)
-                # tendencias calculadas a partir del máximo (250):
-                # alta: >= 70% (>=175), media: >=30% (>=75), baja: <30%
-                if vendidos_count >= 175:
+                # cantidad vendida histórica base (se actualizará al generar ventas reales)
+                vendidos_count = random.randint(0, 80)
+                if vendidos_count >= 60:
                     tendencia = 'alta'
-                elif vendidos_count >= 75:
+                elif vendidos_count >= 25:
                     tendencia = 'media'
                 else:
                     tendencia = 'baja'
@@ -261,17 +280,37 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f"Productos creados: {len(productos_qs)}"))
 
-        # Crear ventas dentro del año 2025
+        # Crear ventas dentro del periodo: 2025-01-01 .. 2026-01-31 (inclusive)
         ventas = []
         tz = timezone.get_current_timezone()
         start_2025 = datetime(2025, 1, 1, 0, 0, 0, tzinfo=tz)
-        end_2025 = datetime(2025, 12, 31, 23, 59, 59, tzinfo=tz)
+        end_2026 = datetime(2026, 1, 31, 23, 59, 59, tzinfo=tz)
+
+        # Preparar estructuras para sesgar selección de productos por categoría
+        productos_por_pk = {p.pk: p for p in productos_qs}
+        # pesos iniciales por producto combinando peso de categoría y una popularidad aleatoria
+        product_weights = []
+        for p in productos_qs:
+            cat_weight = categoria_peso_ventas.get(p.categoria, 1.0)
+            # popularidad base aleatoria (0.5..1.5)
+            pop = random.uniform(0.5, 1.5)
+            w = cat_weight * pop
+            # penalizar si sin stock
+            if getattr(p, 'stock', 0) == 0:
+                w *= 0.01
+            product_weights.append(w)
+
+        # llevar contadores en memoria para actualizar Productos al final
+        prod_sold_counts = {
+            p.pk: int(getattr(p, 'vendidos', 0) or 0) for p in productos_qs}
+        prod_stock = {p.pk: int(getattr(p, 'stock', 0) or 0)
+                      for p in productos_qs}
 
         # Crear ventas (cada venta puede contener N items)
         ventas_creadas = 0
         for _ in range(n_ventas):
             fecha_venta = fake.date_time_between_dates(
-                datetime_start=start_2025, datetime_end=end_2025, tzinfo=tz)
+                datetime_start=start_2025, datetime_end=end_2026, tzinfo=tz)
 
             cliente = random.choice(clientes_qs)
 
@@ -295,15 +334,55 @@ class Command(BaseCommand):
                 estado=estado,
             )
 
-            # número de ítems por venta (1..5)
-            n_items = random.randint(1, 5)
+            # número de ítems por venta (1..6), con cola larga ocasional
+            n_items = random.choices([1, 2, 3, 4, 5, 6], weights=[
+                                     30, 30, 18, 12, 7, 3])[0]
             items_para_venta = []
             total_venta = Decimal('0.00')
 
-            for _i in range(n_items):
-                prod = random.choice(productos_qs)
-                cantidad = random.randint(1, 5)
+            # seleccionar productos por peso (sin reemplazo dentro de la misma venta si es posible)
+            available_products = [
+                p for p in productos_qs if prod_stock.get(p.pk, 0) > 0]
+            # si no hay suficientes disponibles, usar todos y permitir repetidos
+            if len(available_products) >= n_items:
+                choices = random.choices(
+                    population=available_products,
+                    weights=[product_weights[productos_qs.index(
+                        p)] for p in available_products],
+                    k=n_items
+                )
+            else:
+                # fallback: elegir con reemplazo desde todos los productos usando product_weights
+                choices = random.choices(
+                    population=productos_qs, weights=product_weights, k=n_items)
+
+            for _i, prod in enumerate(choices):
+                # cantidad depende de la categoría: alimentos tienden a comprar mayores cantidades
+                if prod.categoria == 'Alimentos':
+                    cantidad = random.choices([1, 2, 3, 4, 5, 6, 8, 10], weights=[
+                                              20, 18, 15, 12, 10, 10, 8, 7])[0]
+                elif prod.categoria == 'Electrónica':
+                    cantidad = random.choices(
+                        [1, 1, 1, 2], weights=[70, 20, 10, 0])[0]
+                elif prod.categoria == 'Moda':
+                    cantidad = random.choices(
+                        [1, 1, 2, 3], weights=[60, 25, 10, 5])[0]
+                else:
+                    cantidad = random.randint(1, 4)
+
+                # respetar stock disponible
+                available = prod_stock.get(prod.pk, 0)
+                if available <= 0:
+                    # artículo agotado, reducir impacto (saltar item)
+                    continue
+                cantidad = min(cantidad, available)
+
                 precio_unitario = Decimal(f"{prod.precio:.2f}")
+                # añadir pequeñas fluctuaciones al precio unitario para realismo
+                fluct = Decimal(
+                    str(round(random.uniform(-0.03, 0.05) * float(precio_unitario), 2)))
+                precio_unitario = (precio_unitario +
+                                   fluct).quantize(Decimal('0.01'))
                 total_item = (precio_unitario *
                               cantidad).quantize(Decimal('0.01'))
 
@@ -317,6 +396,16 @@ class Command(BaseCommand):
                 items_para_venta.append(item)
                 total_venta += total_item
 
+                # actualizar contadores locales
+                prod_sold_counts[prod.pk] = prod_sold_counts.get(
+                    prod.pk, 0) + cantidad
+                prod_stock[prod.pk] = max(
+                    0, prod_stock.get(prod.pk, 0) - cantidad)
+                # si producto se agota, reducir su peso futuro
+                if prod_stock[prod.pk] == 0:
+                    idx = productos_qs.index(prod)
+                    product_weights[idx] *= 0.02
+
             # crear items en bloque para esta venta
             VentaItem.objects.bulk_create(items_para_venta)
 
@@ -327,7 +416,34 @@ class Command(BaseCommand):
             ventas_creadas += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f"Ventas creadas: {ventas_creadas} (todas en 2025)"))
+            f"Ventas creadas: {ventas_creadas} (periodo 2025-01-01 a 2026-01-31)"))
+
+        # Actualizar Productos con los nuevos contadores de stock y vendidos
+        productos_a_actualizar = []
+        for p in productos_qs:
+            pk = p.pk
+            nuevos_vendidos = prod_sold_counts.get(
+                pk, int(getattr(p, 'vendidos', 0) or 0))
+            nuevo_stock = prod_stock.get(pk, int(getattr(p, 'stock', 0) or 0))
+            p.vendidos = nuevos_vendidos
+            p.stock = nuevo_stock
+            # recalcular tendencia de ventas de forma no simétrica
+            if nuevos_vendidos >= 200:
+                p.tendencias = 'alta'
+            elif nuevos_vendidos >= 75:
+                p.tendencias = 'media'
+            else:
+                p.tendencias = 'baja'
+            if p.stock == 0:
+                p.estado = 'agotado'
+            elif p.stock < 50:
+                p.estado = 'bajo'
+            else:
+                p.estado = 'disponible'
+            productos_a_actualizar.append(p)
+
+        Productos.objects.bulk_update(productos_a_actualizar, [
+                                      'vendidos', 'stock', 'tendencias', 'estado'])
 
         self.stdout.write(self.style.SUCCESS(
             "Generación de datos completada."))

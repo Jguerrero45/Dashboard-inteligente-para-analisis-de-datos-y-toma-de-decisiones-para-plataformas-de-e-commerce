@@ -54,12 +54,12 @@ export default function NotificationsSettings() {
                         <p className="text-sm text-muted-foreground">URL donde enviar eventos (JSON POST)</p>
                         <div className="mt-2 flex gap-2">
                             <Input placeholder="https://hooks.tu-servicio.com/notify" value={webhook} onChange={(e) => setWebhook(e.target.value)} />
-                            <Button onClick={() => alert("Simular envío a: " + webhook)} className="bg-emerald-600 hover:bg-emerald-700 text-white">Probar</Button>
+                            <Button onClick={() => alert("Simular envío a: " + webhook)} variant="secondary">Probar</Button>
                         </div>
                     </div>
 
                     <div className="flex gap-2">
-                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">Guardar preferencias</Button>
+                        <Button variant="secondary">Guardar preferencias</Button>
                         <Button variant="ghost">Restaurar</Button>
                     </div>
                 </div>

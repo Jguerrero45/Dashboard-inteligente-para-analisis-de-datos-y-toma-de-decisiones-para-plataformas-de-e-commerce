@@ -25,21 +25,10 @@ const Welcome: React.FC = () => {
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <Link to="/login">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-slate-300 text-slate-800 bg-white hover:bg-slate-50"
-              >
-                Iniciar sesión
-              </Button>
+              <Button variant="outline" size="sm">Iniciar sesión</Button>
             </Link>
             <Link to="/register">
-              <Button
-                size="sm"
-                className="bg-sky-500 hover:bg-sky-400 text-white font-semibold"
-              >
-                Registrarse
-              </Button>
+              <Button size="sm">Registrarse</Button>
             </Link>
           </div>
         </div>
@@ -68,17 +57,10 @@ const Welcome: React.FC = () => {
 
               <div className="flex flex-wrap gap-4 items-center">
                 <Link to="/register">
-                  <Button className="bg-sky-500 hover:bg-sky-400 text-white font-semibold px-6 py-2.5">
-                    Comenzar ahora
-                  </Button>
+                  <Button className="px-6 py-2.5">Comenzar ahora</Button>
                 </Link>
                 <Link to="/dashboard">
-                  <Button
-                    variant="outline"
-                    className="border-slate-300 text-slate-800 bg-white hover:bg-slate-50 px-6 py-2.5"
-                  >
-                    Ver demo en vivo
-                  </Button>
+                  <Button variant="outline" className="px-6 py-2.5">Ver demo en vivo</Button>
                 </Link>
                 <p className="text-xs md:text-sm text-muted-foreground">
                   Sin tarjeta de crédito. Entorno de prueba con datos reales.

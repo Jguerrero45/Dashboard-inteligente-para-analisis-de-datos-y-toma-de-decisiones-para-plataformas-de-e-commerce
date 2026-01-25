@@ -17,7 +17,7 @@ export default function TeamSettings() {
                         <Input placeholder="Agregar miembro (email)" />
                         <Input placeholder="Rol (Admin / Editor / Viewer)" />
                         <Input placeholder="Permisos (comma separated)" />
-                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">Invitar</Button>
+                        <Button variant="secondary">Invitar</Button>
                     </div>
 
                     <div>

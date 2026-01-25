@@ -169,33 +169,8 @@ const Register: React.FC = () => {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="text-sm block mb-1">Empresa (opcional)</label>
-                                <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Mi tienda S.A." />
-                            </div>
-                            <div>
-                                <label className="text-sm block mb-1">Rol</label>
-                                <select
-                                    value={role}
-                                    onChange={(e) => setRole(e.target.value)}
-                                    className="w-full rounded-md px-3 py-2 text-sm"
-                                    style={{
-                                        backgroundColor: "hsl(var(--color-popover))",
-                                        color: "hsl(var(--color-popover-foreground))",
-                                        borderColor: "hsl(var(--color-border))",
-                                    }}
-                                >
-                                    <option value="">Selecciona un rol</option>
-                                    <option value="owner">Propietario</option>
-                                    <option value="manager">Manager</option>
-                                    <option value="analyst">Analista</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
                                 <label className="text-sm block mb-1">Teléfono (opcional)</label>
-                                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+57 300 000 0000" />
+                                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+58 400 000 0000" />
                             </div>
                             <div>
                                 <label className="text-sm block mb-1">Correo electrónico</label>

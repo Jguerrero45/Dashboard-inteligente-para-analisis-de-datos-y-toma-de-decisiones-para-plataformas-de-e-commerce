@@ -1,6 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState } from "react"
 import { useCurrency } from "@/hooks/use-currency"
@@ -107,8 +108,8 @@ export function SalesHeatmap() {
                 return <option key={key} value={key}>{label}</option>
               })}
             </select>
-            <button onClick={() => loadHeatmap(month)} className="ml-2 rounded border px-3 py-1">Aplicar</button>
-            <button onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); loadHeatmap(m); }} className="ml-2 rounded border px-3 py-1">Reset</button>
+            <Button variant="outline" size="sm" onClick={() => loadHeatmap(month)} className="ml-2">Aplicar</Button>
+            <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); loadHeatmap(m); }} className="ml-2">Reset</Button>
             {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
             {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
           </div>

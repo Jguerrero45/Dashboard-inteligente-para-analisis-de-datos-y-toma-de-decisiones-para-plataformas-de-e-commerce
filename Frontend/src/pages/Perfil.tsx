@@ -14,18 +14,20 @@ export default function Perfil() {
 
             <main className="flex-1 container mx-auto px-4 py-8">
                 <div className="space-y-6">
-                    <div>
+                    <div className="max-w-3xl mx-auto text-center">
                         <h1 className="text-3xl font-bold tracking-tight">Cuenta y seguridad</h1>
                         <p className="text-muted-foreground">Administra los datos de tu cuenta y la seguridad del acceso</p>
                     </div>
 
-                    <SettingsLayout
-                        sections={[
-                            { key: "account", label: "Cuenta", content: <AccountSettings /> },
-                            { key: "security", label: "Seguridad", content: <SecuritySettings /> },
-                            { key: "store", label: "Tienda", content: <StoreSettings /> },
-                        ]}
-                    />
+                    <div className="max-w-3xl mx-auto">
+                        <SettingsLayout
+                            sections={[
+                                { key: "account", label: "Cuenta", content: <AccountSettings /> },
+                                { key: "security", label: "Seguridad", content: <SecuritySettings /> },
+                                { key: "store", label: "Tienda", content: <StoreSettings /> },
+                            ]}
+                        />
+                    </div>
                 </div>
             </main>
 
