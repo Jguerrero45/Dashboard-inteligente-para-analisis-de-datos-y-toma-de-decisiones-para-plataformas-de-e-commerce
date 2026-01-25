@@ -5,21 +5,34 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState, useCallback } from "react"
+import { Button } from "@/components/ui/button"
+import { format, subMonths } from "date-fns"
 
 export function RevenueChart() {
   const [data, setData] = useState<any[]>([])
+  const [month, setMonth] = useState<string>(format(new Date(), 'yyyy-MM'))
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadData = (m?: string) => {
+    setLoading(true)
+    setError(null)
     let mounted = true
-    fetch('/api/metrics/revenue-by-category/')
+    const params = new URLSearchParams()
+    if (m) params.set('month', m)
+    fetch('/api/metrics/revenue-by-category/' + (params.toString() ? `?${params}` : ''))
       .then((r) => r.json())
       .then((json) => {
         if (mounted && Array.isArray(json)) setData(json)
       })
-      .catch(() => { })
-    return () => {
-      mounted = false
-    }
+      .catch((err) => { setError(String(err)) })
+      .finally(() => { if (mounted) setLoading(false) })
+    return () => { mounted = false }
+  }
+
+  useEffect(() => {
+    loadData(month)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Mantener valores crudos (USD) y delegar formateo/conversión a `formatPrice`
@@ -49,6 +62,30 @@ export function RevenueChart() {
         </div>
       </CardHeader>
       <CardContent>
+        <div className="flex items-center gap-2 mb-2">
+          <label className="text-sm">Mes</label>
+          <select
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="rounded px-2 py-1"
+            style={{
+              backgroundColor: 'hsl(var(--color-popover))',
+              color: 'hsl(var(--color-popover-foreground))',
+              borderColor: 'hsl(var(--color-border))',
+            }}
+          >
+            {Array.from({ length: 12 }).map((_, i) => {
+              const d = subMonths(new Date(), i)
+              const key = format(d, 'yyyy-MM')
+              const label = format(d, 'MMM yyyy')
+              return <option key={key} value={key}>{label}</option>
+            })}
+          </select>
+          <Button variant="outline" size="sm" onClick={() => loadData(month)} className="ml-2">Aplicar</Button>
+          <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); loadData(m); }} className="ml-2">Reset</Button>
+          {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
+          {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+        </div>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <BarChart data={chartData} onMouseMove={onMove} onMouseLeave={() => { }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />

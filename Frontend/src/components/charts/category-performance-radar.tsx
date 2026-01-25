@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
+import { Button } from "@/components/ui/button"
+import { format, subMonths } from "date-fns"
 
 
 interface CategoryValue {
@@ -17,32 +19,41 @@ export function CategoryPerformanceRadar() {
 
     const [data, setData] = useState<CategoryValue[]>([])
     const [loading, setLoading] = useState(true)
+    const [month, setMonth] = useState<string>(format(new Date(), 'yyyy-MM'))
+    const [error, setError] = useState<string | null>(null)
+
+    const load = async (m?: string) => {
+        setLoading(true)
+        setError(null)
+        let mounted = true
+        try {
+            const params = new URLSearchParams()
+            if (m) params.set('month', m)
+            const res = await fetch(`/api/metrics/revenue-by-category/?days=30${params.toString() ? `&${params}` : ''}`)
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            const json = await res.json()
+            if (!mounted) return
+            const items = Array.isArray(json) ? json : []
+            const mapped = items.map((it: any) => ({
+                category: it.category || "Sin categoría",
+                revenue: Number(it.revenue) || 0,
+                cost: Number(it.cost) || 0,
+            }))
+            setData(mapped)
+        } catch (err: any) {
+            if (mounted) {
+                setData([])
+                setError(String(err))
+            }
+        } finally {
+            if (mounted) setLoading(false)
+        }
+        return () => { mounted = false }
+    }
 
     useEffect(() => {
-        let mounted = true
-        const load = async () => {
-            try {
-                const res = await fetch("/api/metrics/revenue-by-category/?days=30")
-                if (!res.ok) throw new Error(`HTTP ${res.status}`)
-                const json = await res.json()
-                if (!mounted) return
-                const items = Array.isArray(json) ? json : []
-                const mapped = items.map((it: any) => ({
-                    category: it.category || "Sin categoría",
-                    revenue: Number(it.revenue) || 0,
-                    cost: Number(it.cost) || 0,
-                }))
-                setData(mapped)
-            } catch (err) {
-                if (mounted) setData([])
-            } finally {
-                if (mounted) setLoading(false)
-            }
-        }
-        load()
-        return () => {
-            mounted = false
-        }
+        load(month)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const radarData = useMemo(() => (data.length ? data : [{ category: "Sin datos", revenue: 0, cost: 0 }]), [data])
@@ -64,6 +75,30 @@ export function CategoryPerformanceRadar() {
                 </div>
             </CardHeader>
             <CardContent>
+                <div className="flex items-center gap-2 mb-2">
+                    <label className="text-sm">Mes</label>
+                    <select
+                        value={month}
+                        onChange={(e) => setMonth(e.target.value)}
+                        className="rounded px-2 py-1"
+                        style={{
+                            backgroundColor: 'hsl(var(--color-popover))',
+                            color: 'hsl(var(--color-popover-foreground))',
+                            borderColor: 'hsl(var(--color-border))',
+                        }}
+                    >
+                        {Array.from({ length: 12 }).map((_, i) => {
+                            const d = subMonths(new Date(), i)
+                            const key = format(d, 'yyyy-MM')
+                            const label = format(d, 'MMM yyyy')
+                            return <option key={key} value={key}>{label}</option>
+                        })}
+                    </select>
+                    <Button variant="outline" size="sm" onClick={() => load(month)}>Aplicar</Button>
+                    <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); load(m); }}>Reset</Button>
+                    {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
+                    {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+                </div>
                 <ChartContainer
                     config={{
                         revenue: { label: "Ingresos", color: "hsl(var(--chart-3))" },

@@ -321,17 +321,33 @@ class RevenueByCategoryView(APIView):
     def get(self, request):
         from datetime import timedelta
 
-        try:
-            days = int(request.query_params.get('days', 30))
-        except Exception:
-            days = 30
+        month_param = request.query_params.get('month')
+        anchor_now = timezone.now()
 
-        now = timezone.now()
-        start = now - timedelta(days=days)
+        if month_param:
+            try:
+                year_str, mon_str = month_param.split('-')
+                year = int(year_str)
+                mon = int(mon_str)
+                start = timezone.datetime(year=year, month=mon, day=1)
+                if mon == 12:
+                    end = timezone.datetime(year=year + 1, month=1, day=1)
+                else:
+                    end = timezone.datetime(year=year, month=mon + 1, day=1)
+            except Exception:
+                start = anchor_now - timedelta(days=30)
+                end = anchor_now
+        else:
+            try:
+                days = int(request.query_params.get('days', 30))
+            except Exception:
+                days = 30
+            end = anchor_now
+            start = end - timedelta(days=days)
 
         qs = (
             VentaItem.objects.select_related('venta', 'producto')
-            .filter(venta__estado=Ventas.ESTADO_COMPLETADA, venta__fecha__gte=start, venta__fecha__lte=now)
+            .filter(venta__estado=Ventas.ESTADO_COMPLETADA, venta__fecha__gte=start, venta__fecha__lt=end)
         )
 
         cost_expr = ExpressionWrapper(
@@ -531,26 +547,51 @@ class TopCustomersMonthlyView(APIView):
 
         months = int(request.query_params.get('months', 12))
         limit = int(request.query_params.get('limit', 5))
+        year_param = request.query_params.get('year')
+
         today = timezone.now().date()
-        year = today.year
-        month = today.month
+        if year_param:
+            try:
+                target_year = int(year_param)
+            except Exception:
+                target_year = today.year
+        else:
+            target_year = None
+
         months_list = []
         months_keys = []
-        for i in range(months - 1, -1, -1):
-            m = month - i
-            y = year
-            while m <= 0:
-                m += 12
-                y -= 1
-            months_list.append((y, m))
+
+        if target_year:
+            # Full calendar year of the selected year
+            for m in range(1, 13):
+                months_list.append((target_year, m))
+        else:
+            # Rolling window backwards from today
+            year = today.year
+            month = today.month
+            for i in range(months - 1, -1, -1):
+                m = month - i
+                y = year
+                while m <= 0:
+                    m += 12
+                    y -= 1
+                months_list.append((y, m))
 
         for y, m in months_list:
             months_keys.append(timezone.datetime(
                 year=y, month=m, day=1).date())
         months_labels = [MONTH_LABELS_ES[d.month - 1] for d in months_keys]
+        months_iso = [f"{d.year:04d}-{d.month:02d}" for d in months_keys]
+
+        # Limit top customers within the selected year/window
+        sales_filter = Q(estado=Ventas.ESTADO_COMPLETADA)
+        if target_year:
+            start_year = timezone.datetime(year=target_year, month=1, day=1).date()
+            end_year = timezone.datetime(year=target_year + 1, month=1, day=1).date()
+            sales_filter &= Q(fecha__gte=start_year, fecha__lt=end_year)
 
         top_qs = (
-            Ventas.objects.filter(estado=Ventas.ESTADO_COMPLETADA)
+            Ventas.objects.filter(sales_filter)
             .values(cliente_pk=F('cliente__id'), cliente_name=F('cliente__nombre'))
             .annotate(total_spent=Sum('precio_total'))
             .order_by('-total_spent')
@@ -559,8 +600,7 @@ class TopCustomersMonthlyView(APIView):
         top_ids = [item['cliente_pk'] for item in top_list]
 
         monthly_qs = (
-            Ventas.objects.filter(
-                estado=Ventas.ESTADO_COMPLETADA, cliente__id__in=top_ids)
+            Ventas.objects.filter(sales_filter, cliente__id__in=top_ids)
             .annotate(m=TruncMonth('fecha'))
             .values('cliente__id', 'cliente__nombre', 'm')
             .annotate(month_spent=Sum('precio_total'))
@@ -586,7 +626,7 @@ class TopCustomersMonthlyView(APIView):
             series.append({'cliente_id': cid, 'cliente': name,
                           'monthly': monthly_values, 'total': float(total)})
 
-        return Response({'months': months_labels, 'series': series})
+        return Response({'months': months_labels, 'months_iso': months_iso, 'series': series})
 
 
 class TopCategoriesMonthlyView(APIView):
@@ -1319,17 +1359,33 @@ class SalesMonthlyView(APIView):
         except Exception:
             months = 6
 
+        year_param = request.query_params.get('year')
         today = timezone.now().date()
+        if year_param:
+            try:
+                target_year = int(year_param)
+            except Exception:
+                target_year = today.year
+        else:
+            target_year = None
+
         year = today.year
         month = today.month
         months_list = []
-        for i in range(months - 1, -1, -1):
-            m = month - i
-            y = year
-            while m <= 0:
-                m += 12
-                y -= 1
-            months_list.append((y, m))
+
+        if target_year:
+            # fixed calendar year
+            for m in range(1, 13):
+                months_list.append((target_year, m))
+        else:
+            # rolling window backwards
+            for i in range(months - 1, -1, -1):
+                m = month - i
+                y = year
+                while m <= 0:
+                    m += 12
+                    y -= 1
+                months_list.append((y, m))
 
         data = []
         for y, m in months_list:
@@ -1357,8 +1413,10 @@ class SalesMonthlyView(APIView):
                 total=Sum('cantidad')).get('total') or 0
 
             label = MONTH_LABELS_ES[m - 1]
+            month_iso = f"{y:04d}-{m:02d}"
             data.append({
-                'month': label,
+                'month': month_iso,
+                'month_label': label,
                 'sales_sum': float(sales_sum),
                 'sales_count': sales_count,
                 'items_revenue': float(items_revenue),

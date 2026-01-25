@@ -6,36 +6,98 @@ import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components
 import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState, useCallback } from "react"
 import { useCurrency } from "@/hooks/use-currency"
+import { Button } from "@/components/ui/button"
+import { format } from "date-fns"
+
+const getYear = (value?: string) => {
+  if (!value) return ""
+  const d = new Date(value)
+  if (!Number.isNaN(d.getTime())) return String(d.getFullYear())
+  const match = value.match(/(\d{4})/)
+  return match ? match[1] : ""
+}
+
+const buildYearView = (months: string[], series: any[], year: string, monthsIso?: string[]) => {
+  const monthMeta = Array.from({ length: 12 }).map((_, i) => ({
+    label: format(new Date(Number(year), i, 1), 'MMM'),
+    iso: format(new Date(Number(year), i, 1), 'yyyy-MM'),
+  }))
+
+  const backendMonthToIdx = new Map<string, number>()
+  const backendMonths = (monthsIso && monthsIso.length === months.length) ? monthsIso : months
+  backendMonths.forEach((m, idx) => {
+    const key = m.slice(0, 7)
+    backendMonthToIdx.set(key, idx)
+  })
+
+  const chartData = monthMeta.map((m) => {
+    const row: any = { month: m.label }
+    series.forEach((s: any) => {
+      const key = s.cliente || `Cliente ${s.cliente_id}`
+      const srcIdx = backendMonthToIdx.get(m.iso)
+      row[key] = typeof srcIdx === 'number' ? Number(s.monthly?.[srcIdx] ?? 0) : 0
+    })
+    return row
+  })
+
+  const detailBySeries: Record<string, number[]> = {}
+  series.forEach((s: any) => {
+    const key = s.cliente || `Cliente ${s.cliente_id}`
+    detailBySeries[key] = monthMeta.map((m) => {
+      const srcIdx = backendMonthToIdx.get(m.iso)
+      return typeof srcIdx === 'number' ? Number(s.monthly?.[srcIdx] ?? 0) : 0
+    })
+  })
+
+  return { chartData, monthLabels: monthMeta.map((m) => m.label), detailBySeries }
+}
 
 export function CustomersChart() {
   const [data, setData] = useState<any[]>([])
   const [months, setMonths] = useState<string[]>([])
   const [series, setSeries] = useState<any[]>([])
   const { formatPrice } = useCurrency()
+  const [year, setYear] = useState<string>(format(new Date(), 'yyyy'))
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [detailBySeries, setDetailBySeries] = useState<Record<string, number[]>>({})
+  const [monthLabels, setMonthLabels] = useState<string[]>([])
 
-  useEffect(() => {
+  const loadData = (y?: string) => {
+    setLoading(true)
+    setError(null)
     let mounted = true
-    fetch('/api/metrics/top-customers-monthly/?months=12&limit=5')
+    const params = new URLSearchParams({ months: '12', limit: '5' })
+    if (y) params.set('year', y)
+    fetch('/api/metrics/top-customers-monthly/?' + params.toString())
       .then((r) => r.json())
       .then((json) => {
         if (!mounted) return
         if (json && Array.isArray(json.months) && Array.isArray(json.series)) {
+          const monthsIso = Array.isArray(json.months_iso) ? json.months_iso : undefined
           setMonths(json.months)
           setSeries(json.series)
-          // build chart data: array of { month: label, [clientName]: value }
-          const chartData = json.months.map((label: string, idx: number) => {
-            const obj: any = { month: label }
-            json.series.forEach((s: any) => {
-              const key = s.cliente || `Cliente ${s.cliente_id}`
-              obj[key] = Number(s.monthly[idx] || 0)
-            })
-            return obj
-          })
+          const targetYear = y || format(new Date(), 'yyyy')
+          const { chartData, monthLabels, detailBySeries } = buildYearView(json.months, json.series, targetYear, monthsIso)
           setData(chartData)
+          setDetailBySeries(detailBySeries)
+          setMonthLabels(monthLabels)
+        } else {
+          setMonths([])
+          setSeries([])
+          setData([])
+          setDetailBySeries({})
+          setMonthLabels([])
         }
       })
-      .catch(() => { })
+      .catch((err) => { setError(String(err)) })
+      .finally(() => { if (mounted) setLoading(false) })
     return () => { mounted = false }
+  }
+
+  useEffect(() => {
+    loadData(year)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const chartConfig = {}
@@ -52,6 +114,9 @@ export function CustomersChart() {
     setExpandedClients((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
+  const displayData = data
+  const displayMonths = monthLabels
+
   return (
     <Card>
       <CardHeader>
@@ -66,12 +131,34 @@ export function CustomersChart() {
         </div>
       </CardHeader>
       <CardContent>
+        <div className="flex items-center gap-2 mb-2">
+          <label className="text-sm">Año</label>
+          <select
+            value={year}
+            onChange={(e) => { const y = e.target.value; setYear(y); loadData(y) }}
+            className="rounded px-2 py-1"
+            style={{
+              backgroundColor: 'hsl(var(--color-popover))',
+              color: 'hsl(var(--color-popover-foreground))',
+              borderColor: 'hsl(var(--color-border))',
+            }}
+          >
+            {Array.from({ length: 5 }).map((_, i) => {
+              const y = String(Number(format(new Date(), 'yyyy')) - i)
+              return <option key={y} value={y}>{y}</option>
+            })}
+          </select>
+          <Button variant="outline" size="sm" onClick={() => loadData(year)} className="ml-2">Aplicar</Button>
+          <Button variant="outline" size="sm" onClick={() => { const y = format(new Date(), 'yyyy'); setYear(y); loadData(y); }} className="ml-2">Reset</Button>
+          {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
+          {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+        </div>
         <ChartContainer config={chartConfig} className="h-[340px] w-full">
-          <LineChart data={data} onMouseMove={onMove} onMouseLeave={() => { }}>
+          <LineChart data={displayData} onMouseMove={onMove} onMouseLeave={() => { }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="month" className="text-xs" />
             <YAxis className="text-xs" />
-            <Tooltip data={data} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, data.length - 1)} shared={true} />
+            <Tooltip data={displayData} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, displayData.length - 1)} shared={true} />
             {/* one Line per top client */}
             {series.map((s: any, i: number) => {
               const key = s.cliente || `Cliente ${s.cliente_id}`
@@ -117,10 +204,10 @@ export function CustomersChart() {
                 </div>
                 {isExpanded && (
                   <div className="mt-2 text-xs text-muted-foreground grid grid-cols-2 gap-2">
-                    {months.map((m: string, idx: number) => (
+                    {displayMonths.map((m: string, idx: number) => (
                       <div key={m} className="flex items-center justify-between">
                         <span className="font-medium">{m}</span>
-                        <span>{formatPrice(s.monthly[idx] || 0)}</span>
+                        <span>{formatPrice((detailBySeries[s.cliente || `Cliente ${s.cliente_id}`] || [])[idx] || 0)}</span>
                       </div>
                     ))}
                   </div>

@@ -17,7 +17,7 @@ export function UnitsChart() {
             .then((json) => {
                 if (!mounted) return
                 if (Array.isArray(json)) {
-                    const mapped = json.map((it: any) => ({ month: it.month, units: Number(it.items_units ?? 0) }))
+                    const mapped = json.map((it: any) => ({ month: it.month_label || it.month, units: Number(it.items_units ?? 0) }))
                     setData(mapped)
                 }
             })

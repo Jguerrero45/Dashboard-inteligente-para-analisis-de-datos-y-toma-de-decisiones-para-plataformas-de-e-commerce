@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RadialBar, RadialBarChart, ResponsiveContainer, PolarAngleAxis } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
+import { Button } from "@/components/ui/button"
+import { format, subMonths } from "date-fns"
 
 interface ReturningRate {
     rate: number
@@ -16,35 +18,44 @@ interface ReturningRate {
 export function ReturningCustomersCard() {
     const [rate, setRate] = useState<ReturningRate | null>(null)
     const [loading, setLoading] = useState(true)
+    const [month, setMonth] = useState<string>(format(new Date(), 'yyyy-MM'))
+    const [error, setError] = useState<string | null>(null)
+
+    const load = async (m?: string) => {
+        setLoading(true)
+        setError(null)
+        let mounted = true
+        try {
+            const params = new URLSearchParams({ days: '90' })
+            if (m) params.set('month', m)
+            const res = await fetch(`/api/metrics/returning-customers-rate/?${params.toString()}`)
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            const data = await res.json()
+            if (!mounted) return
+            if (data && typeof data.rate === "number") {
+                setRate({
+                    rate: Math.round(data.rate * 10) / 10,
+                    total_buyers: data.total_buyers ?? 0,
+                    returning_buyers: data.returning_buyers ?? 0,
+                    days: data.days ?? 90,
+                })
+            } else {
+                setRate(null)
+            }
+        } catch (err: any) {
+            if (mounted) {
+                setRate(null)
+                setError(String(err))
+            }
+        } finally {
+            if (mounted) setLoading(false)
+        }
+        return () => { mounted = false }
+    }
 
     useEffect(() => {
-        let mounted = true
-        const load = async () => {
-            try {
-                const res = await fetch("/api/metrics/returning-customers-rate/?days=90")
-                if (!res.ok) throw new Error(`HTTP ${res.status}`)
-                const data = await res.json()
-                if (!mounted) return
-                if (data && typeof data.rate === "number") {
-                    setRate({
-                        rate: Math.round(data.rate * 10) / 10,
-                        total_buyers: data.total_buyers ?? 0,
-                        returning_buyers: data.returning_buyers ?? 0,
-                        days: data.days ?? 90,
-                    })
-                } else {
-                    setRate(null)
-                }
-            } catch (err) {
-                if (mounted) setRate(null)
-            } finally {
-                if (mounted) setLoading(false)
-            }
-        }
-        load()
-        return () => {
-            mounted = false
-        }
+        load(month)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const chartData = rate ? [{ name: "Recompra", value: rate.rate }] : [{ name: "Recompra", value: 0 }]
@@ -66,6 +77,30 @@ export function ReturningCustomersCard() {
                 </div>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center gap-4">
+                <div className="flex items-center gap-2">
+                    <label className="text-sm">Mes</label>
+                    <select
+                        value={month}
+                        onChange={(e) => setMonth(e.target.value)}
+                        className="rounded px-2 py-1"
+                        style={{
+                            backgroundColor: 'hsl(var(--color-popover))',
+                            color: 'hsl(var(--color-popover-foreground))',
+                            borderColor: 'hsl(var(--color-border))',
+                        }}
+                    >
+                        {Array.from({ length: 12 }).map((_, i) => {
+                            const d = subMonths(new Date(), i)
+                            const key = format(d, 'yyyy-MM')
+                            const label = format(d, 'MMM yyyy')
+                            return <option key={key} value={key}>{label}</option>
+                        })}
+                    </select>
+                    <Button variant="outline" size="sm" onClick={() => load(month)}>Aplicar</Button>
+                    <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); load(m); }}>Reset</Button>
+                    {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
+                    {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+                </div>
                 <div className="h-[240px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <ChartContainer config={{ value: { label: "Recompra", color: "hsl(var(--chart-2))" } }} className="h-full">

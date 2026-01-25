@@ -4,27 +4,52 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Cell, Pie, PieChart, Sector } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
+
+const normalizeMonthKey = (value?: string) => {
+  if (!value) return ""
+  const d = new Date(value)
+  if (!Number.isNaN(d.getTime())) return format(d, 'yyyy-MM')
+  const match = value.match(/(\d{4})[-/](\d{1,2})/)
+  if (match) {
+    const [, y, m] = match
+    return `${y}-${m.padStart(2, '0')}`
+  }
+  return value.slice(0, 7)
+}
 
 export function ProductsChart() {
   const [months, setMonths] = useState<string[]>([])
   const [series, setSeries] = useState<Array<any>>([])
   const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({})
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadData = () => {
+    setLoading(true)
+    setError(null)
     let mounted = true
-    fetch('/api/metrics/top-categories-monthly/?months=12&limit=6')
+    const params = new URLSearchParams({ months: '12', limit: '6' })
+    fetch('/api/metrics/top-categories-monthly/?' + params.toString())
       .then((r) => r.json())
       .then((json) => {
         if (!mounted) return
         if (json && Array.isArray(json.months) && Array.isArray(json.series)) {
           setMonths(json.months)
           setSeries(json.series)
-          // build chart data if needed in future: months x categories
+        } else {
+          setMonths([])
+          setSeries([])
         }
       })
-      .catch(() => { })
+      .catch((err) => { setError(String(err)) })
+      .finally(() => { if (mounted) setLoading(false) })
     return () => { mounted = false }
+  }
+
+  useEffect(() => {
+    loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const palette = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"]
@@ -36,6 +61,9 @@ export function ProductsChart() {
   const onMove = useCallback((_e: any) => {
     // tooltip handles active index; keep placeholder
   }, [])
+
+  // Render monthly breakdown using all available months in order
+  const indicesToUse = useMemo(() => months.map((_, idx) => idx), [months])
 
 
 
@@ -59,6 +87,8 @@ export function ProductsChart() {
         </div>
       </CardHeader>
       <CardContent>
+        {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
+        {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <PieChart onMouseMove={onMove} onMouseLeave={() => { }}>
             <Tooltip data={slices} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={0} shared={false} />
@@ -103,18 +133,21 @@ export function ProductsChart() {
                     <span className="font-medium">{s.category}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm">Total: <strong>{formatNumber(Number(s.total || 0))}</strong></span>
+                    <span className="text-sm">Total: <strong>{formatNumber(Number(s.total_filtered ?? s.total ?? 0))}</strong></span>
                     <button onClick={() => toggleExpanded(key)} className="text-sm px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">...</button>
                   </div>
                 </div>
                 {isExpanded && (
                   <div className="mt-2 text-xs text-muted-foreground grid grid-cols-2 gap-2">
-                    {months.map((m: string, idx: number) => (
+                    {indicesToUse.map((idx: number) => {
+                      const m = months[idx]
+                      return (
                       <div key={m} className="flex items-center justify-between">
                         <span className="font-medium">{m}</span>
                         <span>{formatNumber(Number(s.monthly[idx] || 0))}</span>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>

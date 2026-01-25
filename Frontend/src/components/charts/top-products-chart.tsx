@@ -6,6 +6,8 @@ import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components
 import ChartInfo from "@/components/ui/chart-info"
 import { useCurrency } from "@/hooks/use-currency"
 import { useEffect, useState, useCallback } from "react"
+import { Button } from "@/components/ui/button"
+import { format } from "date-fns"
 
 // initial empty data; will be fetched from backend
 
@@ -13,18 +15,29 @@ export function TopProductsChart() {
   const { formatPrice } = useCurrency()
   const [topProductsData, setTopProductsData] = useState<any[]>([])
   const [sortBy, setSortBy] = useState<'units' | 'revenue'>('units')
+  const [year, setYear] = useState<string>(format(new Date(), 'yyyy'))
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadData = (y?: string, s?: 'units' | 'revenue') => {
+    setLoading(true)
+    setError(null)
     let mounted = true
-    fetch(`/api/metrics/top-products/?limit=5&sort=${sortBy}`)
+    const params = new URLSearchParams({ limit: '5', sort: s ?? sortBy })
+    if (y) params.set('year', y)
+    fetch(`/api/metrics/top-products/?` + params.toString())
       .then((r) => r.json())
       .then((json) => {
         if (mounted && Array.isArray(json)) setTopProductsData(json)
       })
-      .catch(() => { })
-    return () => {
-      mounted = false
-    }
+      .catch((err) => { setError(String(err)) })
+      .finally(() => { if (mounted) setLoading(false) })
+    return () => { mounted = false }
+  }
+
+  useEffect(() => {
+    loadData(year, sortBy)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy])
 
   // Handler para cambiar criterio de orden
@@ -32,6 +45,15 @@ export function TopProductsChart() {
     const v = evt.target.value as 'units' | 'revenue'
     setSortBy(v)
   }
+
+  const handleYearChange = (evt: React.ChangeEvent<HTMLSelectElement>) => {
+    const y = evt.target.value
+    setYear(y)
+    loadData(y, sortBy)
+  }
+
+  const applyYear = () => loadData(year, sortBy)
+  const resetYear = () => { const y = format(new Date(), 'yyyy'); setYear(y); loadData(y, sortBy) }
 
   // Usar valores crudos desde el backend y delegar formateo a `formatPrice`
   const chartData = topProductsData.map((p) => ({ ...p }))
@@ -51,6 +73,28 @@ export function TopProductsChart() {
             <ChartInfo title="Productos Más Vendidos">
               <p className="text-sm">Lista de los productos que generaron más ingresos en el periodo seleccionado.</p>
             </ChartInfo>
+            <div className="flex items-center gap-2">
+              <label className="text-sm">Año</label>
+              <select
+                value={year}
+                onChange={handleYearChange}
+                className="text-sm rounded-md px-2 py-1"
+                style={{
+                  backgroundColor: 'hsl(var(--color-popover))',
+                  color: 'hsl(var(--color-popover-foreground))',
+                  borderColor: 'hsl(var(--color-border))',
+                }}
+              >
+                {Array.from({ length: 5 }).map((_, i) => {
+                  const y = String(Number(format(new Date(), 'yyyy')) - i)
+                  return <option key={y} value={y}>{y}</option>
+                })}
+              </select>
+              <Button variant="outline" size="sm" onClick={applyYear}>Aplicar</Button>
+              <Button variant="outline" size="sm" onClick={resetYear}>Reset</Button>
+              {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
+              {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+            </div>
             <select
               value={sortBy}
               onChange={handleSortChange}
