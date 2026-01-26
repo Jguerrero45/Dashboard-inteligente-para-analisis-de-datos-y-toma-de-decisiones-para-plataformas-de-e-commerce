@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, useCallback } from "react"
+import { getApiBase } from "@/lib/activeStore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
@@ -27,9 +28,10 @@ export function CategoryPerformanceRadar() {
         setError(null)
         let mounted = true
         try {
+            const API_BASE = getApiBase()
             const params = new URLSearchParams()
             if (m) params.set('month', m)
-            const res = await fetch(`/api/metrics/revenue-by-category/?days=30${params.toString() ? `&${params}` : ''}`)
+            const res = await fetch(`${API_BASE}/metrics/revenue-by-category/?days=30${params.toString() ? `&${params}` : ''}`)
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             const json = await res.json()
             if (!mounted) return

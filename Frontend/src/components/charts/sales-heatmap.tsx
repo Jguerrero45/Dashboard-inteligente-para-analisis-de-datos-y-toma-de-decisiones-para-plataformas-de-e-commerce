@@ -6,6 +6,7 @@ import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState } from "react"
 import { useCurrency } from "@/hooks/use-currency"
 import { format, subMonths } from 'date-fns'
+import { getApiBase } from "@/lib/activeStore"
 
 const daysOfWeek = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
@@ -39,7 +40,8 @@ export function SalesHeatmap() {
     let mounted = true
     const params = new URLSearchParams()
     if (m) params.set('month', m)
-    fetch('/api/metrics/sales-heatmap/?' + params.toString())
+    const API_BASE = getApiBase()
+    fetch(`${API_BASE}/metrics/sales-heatmap/?` + params.toString())
       .then((r) => {
         if (!r.ok) throw new Error('Error fetching heatmap')
         return r.json()

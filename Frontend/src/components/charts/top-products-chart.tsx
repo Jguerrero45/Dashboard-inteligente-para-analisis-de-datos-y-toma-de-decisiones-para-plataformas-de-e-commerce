@@ -6,6 +6,7 @@ import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components
 import ChartInfo from "@/components/ui/chart-info"
 import { useCurrency } from "@/hooks/use-currency"
 import { useEffect, useState, useCallback } from "react"
+import { getApiBase } from "@/lib/activeStore"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 
@@ -25,7 +26,8 @@ export function TopProductsChart() {
     let mounted = true
     const params = new URLSearchParams({ limit: '5', sort: s ?? sortBy })
     if (y) params.set('year', y)
-    fetch(`/api/metrics/top-products/?` + params.toString())
+    const API_BASE = getApiBase()
+    fetch(`${API_BASE}/metrics/top-products/?` + params.toString())
       .then((r) => r.json())
       .then((json) => {
         if (mounted && Array.isArray(json)) setTopProductsData(json)

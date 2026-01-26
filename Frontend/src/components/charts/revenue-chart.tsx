@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState, useCallback } from "react"
+import { getApiBase } from "@/lib/activeStore"
 import { Button } from "@/components/ui/button"
 import { format, subMonths } from "date-fns"
 
@@ -18,9 +19,10 @@ export function RevenueChart() {
     setLoading(true)
     setError(null)
     let mounted = true
+    const API_BASE = getApiBase()
     const params = new URLSearchParams()
     if (m) params.set('month', m)
-    fetch('/api/metrics/revenue-by-category/' + (params.toString() ? `?${params}` : ''))
+    fetch(`${API_BASE}/metrics/revenue-by-category/` + (params.toString() ? `?${params}` : ''))
       .then((r) => r.json())
       .then((json) => {
         if (mounted && Array.isArray(json)) setData(json)

@@ -5,6 +5,7 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState, useCallback } from "react"
+import { getApiBase } from "@/lib/activeStore"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 
@@ -47,9 +48,10 @@ export function SalesChart() {
     setLoading(true)
     setError(null)
     let mounted = true
+    const API_BASE = getApiBase()
     const params = new URLSearchParams({ months: "12" })
     if (y) params.set("year", y)
-    fetch("/api/metrics/sales-monthly/?" + params.toString())
+    fetch(`${API_BASE}/metrics/sales-monthly/?` + params.toString())
       .then((r) => r.json())
       .then((json) => {
         if (!mounted) return

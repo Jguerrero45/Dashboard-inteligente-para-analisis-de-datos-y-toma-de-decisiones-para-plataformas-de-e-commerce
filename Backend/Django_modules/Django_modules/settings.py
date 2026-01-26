@@ -53,6 +53,8 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    # Middleware que asigna alias de DB según el prefijo de la URL (/api2/, /api3/)
+    'Dashboard.db_router.RequestDBRouterMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -101,6 +103,34 @@ DATABASES = {
     }
 
 }
+
+# Bases de datos adicionales para tiendas/almacenes separadas (usar variables de entorno
+# o crear localmente las bases con estos nombres). Cambia los nombres/credenciales si
+# tus DB reales difieren.
+DATABASES['store_b'] = {
+    'ENGINE': 'django.db.backends.postgresql',
+    # Ya existen localmente: trabajo_de_grado_store2
+    'NAME': os.environ.get('DB_STORE_B_NAME', 'trabajo_de_grado_store2'),
+    'USER': os.environ.get('DB_STORE_B_USER', DATABASES['default']['USER']),
+    'PASSWORD': os.environ.get('DB_STORE_B_PASSWORD', DATABASES['default']['PASSWORD']),
+    'HOST': os.environ.get('DB_STORE_B_HOST', DATABASES['default']['HOST']),
+    'PORT': os.environ.get('DB_STORE_B_PORT', DATABASES['default']['PORT']),
+}
+
+DATABASES['store_c'] = {
+    'ENGINE': 'django.db.backends.postgresql',
+    # Ya existen localmente: trabajo_de_grado_store3
+    'NAME': os.environ.get('DB_STORE_C_NAME', 'trabajo_de_grado_store3'),
+    'USER': os.environ.get('DB_STORE_C_USER', DATABASES['default']['USER']),
+    'PASSWORD': os.environ.get('DB_STORE_C_PASSWORD', DATABASES['default']['PASSWORD']),
+    'HOST': os.environ.get('DB_STORE_C_HOST', DATABASES['default']['HOST']),
+    'PORT': os.environ.get('DB_STORE_C_PORT', DATABASES['default']['PORT']),
+}
+
+# Router y middleware para enrutar peticiones por prefijo de URL a DBs separadas
+DATABASE_ROUTERS = [
+    'Dashboard.db_router.PathRouter',
+]
 
 
 # Password validation

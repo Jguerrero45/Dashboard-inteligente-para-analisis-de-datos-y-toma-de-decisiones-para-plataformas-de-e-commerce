@@ -6,6 +6,7 @@ import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components
 import ChartInfo from "@/components/ui/chart-info"
 
 import { useEffect, useState, useCallback } from "react"
+import { getApiBase } from "@/lib/activeStore"
 
 export function ProfitMarginChart() {
 
@@ -13,7 +14,8 @@ export function ProfitMarginChart() {
 
     useEffect(() => {
         let mounted = true
-        fetch('/api/metrics/revenue-by-category/')
+        const API_BASE = getApiBase()
+        fetch(`${API_BASE}/metrics/revenue-by-category/`)
             .then((r) => r.json())
             .then((json) => {
                 if (mounted && Array.isArray(json)) setData(json)

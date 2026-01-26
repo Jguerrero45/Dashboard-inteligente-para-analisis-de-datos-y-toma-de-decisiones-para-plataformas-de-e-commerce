@@ -5,6 +5,7 @@ import { Cell, Pie, PieChart, Sector } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState, useCallback, useMemo } from "react"
+import { getApiBase } from "@/lib/activeStore"
 import { format } from "date-fns"
 
 const normalizeMonthKey = (value?: string) => {
@@ -31,7 +32,8 @@ export function ProductsChart() {
     setError(null)
     let mounted = true
     const params = new URLSearchParams({ months: '12', limit: '6' })
-    fetch('/api/metrics/top-categories-monthly/?' + params.toString())
+    const API_BASE = getApiBase()
+    fetch(`${API_BASE}/metrics/top-categories-monthly/?` + params.toString())
       .then((r) => r.json())
       .then((json) => {
         if (!mounted) return

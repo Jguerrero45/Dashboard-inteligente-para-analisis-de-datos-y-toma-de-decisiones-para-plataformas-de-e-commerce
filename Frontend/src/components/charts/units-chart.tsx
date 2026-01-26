@@ -6,13 +6,15 @@ import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components
 import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState } from "react"
 import { useCallback } from "react"
+import { getApiBase } from "@/lib/activeStore"
 
 export function UnitsChart() {
     const [data, setData] = useState<any[]>([])
 
     useEffect(() => {
         let mounted = true
-        fetch('/api/metrics/sales-monthly/?months=12')
+        const API_BASE = getApiBase()
+        fetch(`${API_BASE}/metrics/sales-monthly/?months=12`)
             .then((r) => r.json())
             .then((json) => {
                 if (!mounted) return

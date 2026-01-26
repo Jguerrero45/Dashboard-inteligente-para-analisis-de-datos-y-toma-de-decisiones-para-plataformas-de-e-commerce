@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { getApiBase } from "@/lib/activeStore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { RadialBar, RadialBarChart, ResponsiveContainer, PolarAngleAxis } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
@@ -26,9 +27,10 @@ export function ReturningCustomersCard() {
         setError(null)
         let mounted = true
         try {
+            const API_BASE = getApiBase()
             const params = new URLSearchParams({ days: '90' })
             if (m) params.set('month', m)
-            const res = await fetch(`/api/metrics/returning-customers-rate/?${params.toString()}`)
+            const res = await fetch(`${API_BASE}/metrics/returning-customers-rate/?${params.toString()}`)
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             const data = await res.json()
             if (!mounted) return

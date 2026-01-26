@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback } from "react"
 import { useCurrency } from "@/hooks/use-currency"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
+import { getApiBase } from "@/lib/activeStore"
 
 const getYear = (value?: string) => {
   if (!value) return ""
@@ -67,9 +68,10 @@ export function CustomersChart() {
     setLoading(true)
     setError(null)
     let mounted = true
+    const API_BASE = getApiBase()
     const params = new URLSearchParams({ months: '12', limit: '5' })
     if (y) params.set('year', y)
-    fetch('/api/metrics/top-customers-monthly/?' + params.toString())
+    fetch(`${API_BASE}/metrics/top-customers-monthly/?` + params.toString())
       .then((r) => r.json())
       .then((json) => {
         if (!mounted) return

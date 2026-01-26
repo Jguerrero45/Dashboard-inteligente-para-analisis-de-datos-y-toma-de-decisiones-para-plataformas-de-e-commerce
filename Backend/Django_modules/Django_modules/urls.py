@@ -26,6 +26,9 @@ from Dashboard.views import CustomTokenObtainPairView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('Dashboard.urls')),
+    # Montar las mismas rutas bajo /api2/ y /api3/ — el router decidirá la DB según prefijo
+    path('api2/', include('Dashboard.urls')),
+    path('api3/', include('Dashboard.urls')),
     # JWT token endpoints
     path('api/token/', CustomTokenObtainPairView.as_view(),
          name='token_obtain_pair'),
