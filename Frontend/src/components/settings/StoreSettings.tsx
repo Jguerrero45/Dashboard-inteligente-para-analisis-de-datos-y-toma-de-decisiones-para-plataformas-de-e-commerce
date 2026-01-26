@@ -63,6 +63,8 @@ export default function StoreSettings() {
         const token = getToken()
         if (!token) return addToast({ title: 'No autenticado', description: 'Inicia sesión.' })
         setLoading(true)
+        // alerta al iniciar creación
+        if (typeof window !== 'undefined') alert('Creando tienda...')
         try {
             const payload = { name, api_url: apiUrl }
             console.log('[StoreSettings] creating store', payload, 'token?', !!token)
@@ -120,6 +122,14 @@ export default function StoreSettings() {
     const handleDelete = async (id: number) => {
         const token = getToken()
         if (!token) return addToast({ title: 'No autenticado', description: 'Inicia sesión.' })
+        // confirmar eliminación
+        if (typeof window !== 'undefined') {
+            const storeToDelete = stores.find(s => s.id === id)
+            const nameToDelete = storeToDelete ? storeToDelete.name : id
+            if (!confirm(`¿Estás seguro que quieres eliminar la tienda "${nameToDelete}"?`)) {
+                return
+            }
+        }
         try {
             let res = await fetch(`/api/stores/${id}/`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-store' })
             if (!res.ok) {
@@ -152,6 +162,8 @@ export default function StoreSettings() {
     const setActive = async (storeId: number | null) => {
         const token = getToken()
         if (!token) return addToast({ title: 'No autenticado', description: 'Inicia sesión.' })
+        // alerta al cambiar/quitar tienda activa
+        if (typeof window !== 'undefined') alert(storeId ? `Cambiando tienda activa a id ${storeId}...` : 'Quitando tienda activa...')
         try {
             const payload: any = { selected_store: storeId }
             let res = await fetch('/api/profile/', {
@@ -181,6 +193,14 @@ export default function StoreSettings() {
             const activeStore = stores.find(s => s.id === storeId)
             setActiveStore(activeStore ? activeStore.api_url : null)
             addToast({ title: 'Tienda activa', description: storeId ? `${activeStore?.name} seleccionada` : 'Se quitó la tienda activa' })
+            // alerta de confirmación al completar el cambio
+            if (typeof window !== 'undefined') {
+                if (storeId) {
+                    alert(`Tienda activa: ${activeStore?.name} seleccionada`)
+                } else {
+                    alert('Se quitó la tienda activa')
+                }
+            }
         } catch (e) {
             console.error(e)
             addToast({ title: 'Error', description: 'No se pudo cambiar la tienda activa.' })

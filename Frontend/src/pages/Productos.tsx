@@ -239,9 +239,6 @@ export default function ProductosPage() {
                     <Button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1} variant="outline">→</Button>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={handleExportProductos}>
-                      <Download className="mr-2 h-4 w-4" /> Exportar Productos CSV
-                    </Button>
                     {loading ? <div className="text-sm">Cargando...</div> : errorLoad ? <div className="text-sm text-destructive">{errorLoad}</div> : null}
                   </div>
                 </div>

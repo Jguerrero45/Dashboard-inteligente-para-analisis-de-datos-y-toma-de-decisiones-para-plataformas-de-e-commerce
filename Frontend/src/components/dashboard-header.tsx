@@ -69,6 +69,25 @@ export function DashboardHeader() {
       }
     }
     load()
+    // inicializar desde localStorage si existe
+    try {
+      const cached = localStorage.getItem('profile_avatar')
+      if (cached) setProfileAvatar(cached)
+    } catch (e) {
+      /* ignore */
+    }
+
+    // escuchar actualizaciones de perfil (subida de avatar desde AccountSettings)
+    const onProfileUpdated = (ev: Event) => {
+      try {
+        const detail: any = (ev as CustomEvent).detail
+        if (detail && detail.avatar) setProfileAvatar(detail.avatar)
+      } catch (e) {
+        // ignore
+      }
+    }
+    window.addEventListener('profile-updated', onProfileUpdated)
+    return () => window.removeEventListener('profile-updated', onProfileUpdated)
   }, [])
 
   return (
@@ -129,7 +148,7 @@ export function DashboardHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src="/abstract-geometric-shapes.png" alt="Usuario" />
+                  <AvatarImage src={profileAvatar || '/abstract-geometric-shapes.png'} alt="Usuario" />
                   <AvatarFallback>AD</AvatarFallback>
                 </Avatar>
               </Button>

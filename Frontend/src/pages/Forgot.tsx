@@ -15,7 +15,7 @@ export default function Forgot() {
                 <CardContent>
                     <p className="mb-4 text-sm text-muted-foreground">
                         Si olvidaste tu contraseña, por favor comunícate con tus superiores — ellos son los autorizados para
-                        gestionar cambios de contraseña en este sistema.
+                        gestionar las recuperaciones de contraseña en este sistema.
                     </p>
                     <div className="flex gap-2">
                         <Button onClick={() => navigate(-1)} variant="outline">Volver</Button>

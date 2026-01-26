@@ -7,12 +7,9 @@ import { Button } from "@/components/ui/button"
 import StatusBadge from "@/components/ui/status-badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Search, Filter, CalendarIcon, Users } from "lucide-react"
+import { Search, Filter, Users } from "lucide-react"
 import { useCurrency } from "@/hooks/use-currency"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
 
@@ -24,8 +21,6 @@ export default function ClientesPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [segmentoFilter, setSegmentoFilter] = useState("todos")
     const [estadoFilter, setEstadoFilter] = useState("todos")
-    const [dateFrom, setDateFrom] = useState<Date>()
-    const [dateTo, setDateTo] = useState<Date>()
     const [clientes, setClientes] = useState<any[]>(clientesData)
     const [loading, setLoading] = useState(false)
     const [errorLoad, setErrorLoad] = useState<string | null>(null)
@@ -78,9 +73,7 @@ export default function ClientesPage() {
             emailStr.toLowerCase().includes(searchTerm.toLowerCase())
         const matchSegmento = segmentoFilter === "todos" || c.segmento === segmentoFilter
         const matchEstado = estadoFilter === "todos" || c.estado === estadoFilter
-        const matchDateFrom = !dateFrom || c.fechaRegistro >= dateFrom
-        const matchDateTo = !dateTo || c.fechaRegistro <= dateTo
-        return matchSearch && matchSegmento && matchEstado && matchDateFrom && matchDateTo
+        return matchSearch && matchSegmento && matchEstado
     })
 
     // Estadísticas
@@ -122,7 +115,7 @@ export default function ClientesPage() {
     // reset page when filters / sorting / search change to avoid stale page indices
     useEffect(() => {
         setPage(0)
-    }, [searchTerm, segmentoFilter, estadoFilter, dateFrom, dateTo, sortBy, sortDir])
+    }, [searchTerm, segmentoFilter, estadoFilter, sortBy, sortDir])
 
     return (
         <div className="flex min-h-screen flex-col bg-background">
@@ -236,8 +229,6 @@ export default function ClientesPage() {
                                             setSearchTerm("")
                                             setSegmentoFilter("todos")
                                             setEstadoFilter("todos")
-                                            setDateFrom(undefined)
-                                            setDateTo(undefined)
                                         }}
                                     >
                                         <Filter className="mr-2 h-4 w-4" />
@@ -246,37 +237,6 @@ export default function ClientesPage() {
                                 </div>
 
                                 {/* (Orden moved to a separate Card below) */}
-
-                                <div className="flex flex-col gap-4 md:flex-row md:items-end">
-                                    <div className="flex-1">
-                                        <label className="text-sm font-medium mb-2 block">Fecha Desde</label>
-                                        <Popover usePortal={false}>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {dateFrom ? format(dateFrom, "PPP", { locale: es }) : "Seleccionar fecha"}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0">
-                                                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                    <div className="flex-1">
-                                        <label className="text-sm font-medium mb-2 block">Fecha Hasta</label>
-                                        <Popover usePortal={false}>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {dateTo ? format(dateTo, "PPP", { locale: es }) : "Seleccionar fecha"}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0">
-                                                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                </div>
                             </div>
                         </CardContent>
                     </Card>

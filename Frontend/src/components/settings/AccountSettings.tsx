@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { refreshAccessToken } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 
@@ -18,8 +18,6 @@ export default function AccountSettings() {
     const [company, setCompany] = useState("")
     const [address, setAddress] = useState("")
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-    const [avatarFile, setAvatarFile] = useState<File | null>(null)
-    const fileInputRef = useRef<HTMLInputElement | null>(null)
 
     useEffect(() => {
         const token = localStorage.getItem('access_token')
@@ -124,69 +122,7 @@ export default function AccountSettings() {
             })
     }
 
-    const uploadAvatarFile = async (file: File) => {
-        const token = localStorage.getItem('access_token')
-        if (!token) {
-            addToast({ title: 'No autenticado', description: 'Inicia sesión para subir el avatar.' })
-            return
-        }
-        const fd = new FormData()
-        fd.append('avatar', file)
-        try {
-            const res = await fetch('/api/profile/avatar/', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: fd,
-            })
-            const data = await res.json()
-            if (!res.ok) throw new Error(data.detail || 'No se pudo subir el avatar')
-            setAvatarUrl(data.avatar_url || null)
-            setAvatarFile(null)
-            addToast({ title: 'Avatar actualizado', description: 'La foto de perfil fue cambiada.' })
-        } catch (err) {
-            console.error('Avatar upload error', err)
-            addToast({ title: 'Error', description: 'No se pudo subir el avatar.' })
-        }
-    }
-
-    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const f = e.target.files?.[0]
-        if (!f) return
-        setAvatarFile(f)
-        const url = URL.createObjectURL(f)
-        setAvatarUrl(url)
-        // subir automáticamente
-        uploadAvatarFile(f)
-    }
-
-    const uploadAvatar = () => {
-        if (!avatarFile) {
-            addToast({ title: 'Sin archivo', description: 'Selecciona una imagen para subir.' })
-            return
-        }
-        const token = localStorage.getItem('access_token')
-        if (!token) {
-            addToast({ title: 'No autenticado', description: 'Inicia sesión para subir el avatar.' })
-            return
-        }
-        const fd = new FormData()
-        fd.append('avatar', avatarFile)
-        fetch('/api/profile/avatar/', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: fd,
-        })
-            .then(async (res) => {
-                const data = await res.json()
-                if (!res.ok) throw new Error(data.detail || 'No se pudo subir el avatar')
-                setAvatarUrl(data.avatar_url || null)
-                addToast({ title: 'Avatar actualizado', description: 'La foto de perfil fue cambiada.' })
-            })
-            .catch((err) => {
-                console.error('Avatar upload error', err)
-                addToast({ title: 'Error', description: 'No se pudo subir el avatar.' })
-            })
-    }
+    // La opción de subir avatar fue removida por problemas de integración con el backend.
 
     return (
         <Card>
@@ -195,25 +131,7 @@ export default function AccountSettings() {
                 <CardDescription>Información básica de perfil.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-[160px_1fr] gap-6 items-start">
-
-                    <div className="space-y-3">
-                        <div className="w-40 h-40 rounded-md overflow-hidden border bg-muted flex items-center justify-center">
-                            {avatarUrl ? (
-                                <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-xs text-muted-foreground">Sin foto</span>
-                            )}
-                        </div>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleAvatarChange}
-                            className="hidden"
-                        />
-                        <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="border-amber-500 text-amber-600 hover:bg-amber-50">Cambiar foto</Button>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
                             <label className="text-xs">Nombre completo</label>
