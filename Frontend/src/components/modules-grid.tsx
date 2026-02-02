@@ -65,9 +65,17 @@ const modules = [
 ]
 
 export function ModulesGrid() {
+  const userGroups = JSON.parse(localStorage.getItem('user_groups') || '[]')
+  const filteredModules = modules.filter(module => {
+    if (userGroups.includes('Empleado') && module.title === 'Costos') {
+      return false
+    }
+    return true
+  })
+
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {modules.map((module) => {
+      {filteredModules.map((module) => {
         const Icon = module.icon
         const content = (
           <Card className={`group h-full transition-all hover:shadow-lg hover:scale-105 ${module.comingSoon ? 'opacity-80' : 'cursor-pointer'}`}>

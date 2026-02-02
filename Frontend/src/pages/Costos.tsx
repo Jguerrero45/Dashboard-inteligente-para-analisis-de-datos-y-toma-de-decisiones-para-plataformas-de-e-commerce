@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -12,6 +13,7 @@ import { DashboardFooter } from "@/components/dashboard-footer"
 
 export default function Costos() {
     const { formatPrice } = useCurrency()
+    const navigate = useNavigate()
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined
     const [productos, setProductos] = useState<any[]>([])
@@ -25,6 +27,13 @@ export default function Costos() {
     const pageSize = 10
     const [editingId, setEditingId] = useState<number | null>(null)
     const [editingValue, setEditingValue] = useState<string>("")
+
+    useEffect(() => {
+        const userGroups = JSON.parse(localStorage.getItem('user_groups') || '[]')
+        if (userGroups.includes('Empleado')) {
+            navigate('/modulos')
+        }
+    }, [navigate])
 
     async function fetchProductos() {
         setLoading(true)

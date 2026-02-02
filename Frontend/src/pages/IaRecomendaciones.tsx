@@ -12,6 +12,8 @@ type Product = { id: number; nombre: string; categoria: string; costo?: number }
 export default function IaRecomendacionesPage() {
     const API_BASE = getApiBase()
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    const userGroups = JSON.parse(localStorage.getItem('user_groups') || '[]')
+    const isEmpleado = userGroups.includes('Empleado')
     const [response, setResponse] = useState("")
     const [loading, setLoading] = useState(false)
     const [fetchingProducts, setFetchingProducts] = useState(false)
@@ -275,87 +277,89 @@ export default function IaRecomendacionesPage() {
                     </div>
 
                     <div className="grid gap-6 md:grid-cols-3">
-                        <div className="md:col-span-2 space-y-4">
-                            <Card>
-                                <CardHeader>
-                                    <div className="flex items-start justify-between w-full">
-                                        <div>
-                                            <CardTitle>Filtros</CardTitle>
-                                            <CardDescription>Filtra por categoría y productos (productos dependen de la categoría)</CardDescription>
+                        {!isEmpleado && (
+                            <div className="md:col-span-2 space-y-4">
+                                <Card>
+                                    <CardHeader>
+                                        <div className="flex items-start justify-between w-full">
+                                            <div>
+                                                <CardTitle>Filtros</CardTitle>
+                                                <CardDescription>Filtra por categoría y productos (productos dependen de la categoría)</CardDescription>
+                                            </div>
                                         </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex flex-col gap-3">
-                                        <div className="flex flex-col sm:flex-row gap-3">
-                                            <label className="flex-1">
-                                                <div className="text-sm font-medium mb-1">Categoría</div>
-                                                <Select value={selectedCategory} onValueChange={(v: string) => { setSelectedCategory(v); setSelectedProduct("") }}>
-                                                    <SelectTrigger className="w-full text-foreground placeholder:text-muted-foreground">{categories.find((c) => c.id === selectedCategory)?.name || (fetchingProducts ? "Cargando..." : "-- Sin datos --")}</SelectTrigger>
-                                                    <SelectContent>
-                                                        {categories.map((c) => (
-                                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </label>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex flex-col sm:flex-row gap-3">
+                                                <label className="flex-1">
+                                                    <div className="text-sm font-medium mb-1">Categoría</div>
+                                                    <Select value={selectedCategory} onValueChange={(v: string) => { setSelectedCategory(v); setSelectedProduct("") }}>
+                                                        <SelectTrigger className="w-full text-foreground placeholder:text-muted-foreground">{categories.find((c) => c.id === selectedCategory)?.name || (fetchingProducts ? "Cargando..." : "-- Sin datos --")}</SelectTrigger>
+                                                        <SelectContent>
+                                                            {categories.map((c) => (
+                                                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </label>
 
-                                            <label className="flex-1">
-                                                <div className="text-sm font-medium mb-1">Productos</div>
-                                                <Select value={selectedProduct} onValueChange={(v: string) => setSelectedProduct(v)}>
-                                                    <SelectTrigger className="w-full text-foreground placeholder:text-muted-foreground">{selectedProduct ? (productsByCategory[selectedCategory] ?? []).find((p) => p.id === selectedProduct)?.name : (fetchingProducts ? "Cargando..." : "-- Sin datos --")}</SelectTrigger>
-                                                    <SelectContent>
-                                                        {(productsByCategory[selectedCategory] ?? []).map((p) => (
-                                                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </label>
+                                                <label className="flex-1">
+                                                    <div className="text-sm font-medium mb-1">Productos</div>
+                                                    <Select value={selectedProduct} onValueChange={(v: string) => setSelectedProduct(v)}>
+                                                        <SelectTrigger className="w-full text-foreground placeholder:text-muted-foreground">{selectedProduct ? (productsByCategory[selectedCategory] ?? []).find((p) => p.id === selectedProduct)?.name : (fetchingProducts ? "Cargando..." : "-- Sin datos --")}</SelectTrigger>
+                                                        <SelectContent>
+                                                            {(productsByCategory[selectedCategory] ?? []).map((p) => (
+                                                                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </label>
+                                            </div>
+
+                                            {/* Mensajes de ayuda cuando no hay productos */}
+                                            {products.length === 0 && !fetchingProducts && (
+                                                <p className="text-sm text-muted-foreground">No hay productos cargados. Agrega al menos un producto para que las recomendaciones funcionen.</p>
+                                            )}
+                                            {products.length > 0 && (productsByCategory[selectedCategory] ?? []).length === 0 && !fetchingProducts && (
+                                                <p className="text-sm text-muted-foreground">Esta categoría no tiene productos. Agrega productos a la categoría para obtener recomendaciones.</p>
+                                            )}
+
+                                            <div className="flex items-center gap-2">
+                                                <Button onClick={generateByFilters} disabled={loading || !selectedProduct} variant="outline" className="text-green-500">
+                                                    Generar
+                                                </Button>
+                                                <Button variant="outline" onClick={() => { setSelectedCategory(categories[0]?.id || ""); setSelectedProduct(""); setResponse("") }} className="border-red text-red-400">
+                                                    Limpiar
+                                                </Button>
+                                            </div>
                                         </div>
+                                    </CardContent>
+                                </Card>
 
-                                        {/* Mensajes de ayuda cuando no hay productos */}
-                                        {products.length === 0 && !fetchingProducts && (
-                                            <p className="text-sm text-muted-foreground">No hay productos cargados. Agrega al menos un producto para que las recomendaciones funcionen.</p>
-                                        )}
-                                        {products.length > 0 && (productsByCategory[selectedCategory] ?? []).length === 0 && !fetchingProducts && (
-                                            <p className="text-sm text-muted-foreground">Esta categoría no tiene productos. Agrega productos a la categoría para obtener recomendaciones.</p>
-                                        )}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Respuesta</CardTitle>
+                                        <CardDescription>Respuesta generada basada en filtros seleccionados</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="min-h-[64px] p-3 rounded-md border bg-card space-y-3">
+                                            {loading ? <span className="text-sm text-muted-foreground">Generando…</span> : (
+                                                response ? <p className="text-sm text-justify">{response}</p> : <p className="text-sm text-muted-foreground">No hay respuesta. Selecciona filtros y pulsa "Generar recomendaciones automáticas".</p>
+                                            )}
 
-                                        <div className="flex items-center gap-2">
-                                            <Button onClick={generateByFilters} disabled={loading || !selectedProduct} variant="outline" className="text-green-500">
-                                                Generar
-                                            </Button>
-                                            <Button variant="outline" onClick={() => { setSelectedCategory(categories[0]?.id || ""); setSelectedProduct(""); setResponse("") }} className="border-red text-red-400">
-                                                Limpiar
-                                            </Button>
+                                            <div className="flex items-center gap-2">
+                                                <Button onClick={saveResponseToRecommendations} disabled={!response || response.trim() === ""} variant="outline" className="text-green-500">
+                                                    Guardar respuesta
+                                                </Button>
+                                                <Button variant="outline" onClick={() => setResponse("")} className=" text-red-400">Limpiar respuesta</Button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
 
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Respuesta</CardTitle>
-                                    <CardDescription>Respuesta generada basada en filtros seleccionados</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="min-h-[64px] p-3 rounded-md border bg-card space-y-3">
-                                        {loading ? <span className="text-sm text-muted-foreground">Generando…</span> : (
-                                            response ? <p className="text-sm text-justify">{response}</p> : <p className="text-sm text-muted-foreground">No hay respuesta. Selecciona filtros y pulsa "Generar recomendaciones automáticas".</p>
-                                        )}
-
-                                        <div className="flex items-center gap-2">
-                                            <Button onClick={saveResponseToRecommendations} disabled={!response || response.trim() === ""} variant="outline" className="text-green-500">
-                                                Guardar respuesta
-                                            </Button>
-                                            <Button variant="outline" onClick={() => setResponse("")} className=" text-red-400">Limpiar respuesta</Button>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        <div className="md:col-span-1">
+                        <div className={isEmpleado ? "md:col-span-3" : "md:col-span-1"}>
                             <AIRecommendations recommendations={recommendations} onRefresh={async () => {
                                 await loadRecommendations()
                                 return

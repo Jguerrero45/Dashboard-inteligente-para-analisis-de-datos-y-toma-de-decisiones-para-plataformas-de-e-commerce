@@ -1691,6 +1691,7 @@ class ProfileView(APIView):
             'avatar_url': avatar_url,
             'selected_store': selected_store,
             'stores': stores_list,
+            'groups': [g.name for g in user.groups.all()],
         })
 
     def put(self, request):

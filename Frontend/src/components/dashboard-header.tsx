@@ -17,17 +17,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useCurrency } from "@/hooks/use-currency"
 
-const navigationItems = [
-  { name: "Dashboard", href: "/dashboard" },
-  { name: "Módulos", href: "/modulos" },
-  { name: "Costos", href: "/costos" },
-  { name: "Ventas", href: "/ventas" },
-  { name: "Clientes", href: "/clientes" },
-  { name: "Productos", href: "/productos" },
-  { name: "Recomendaciones IA", href: "/ia-recomendaciones" },
-  { name: "Reportes", href: "/reportes" },
-]
-
 export function DashboardHeader() {
   const [isOpen, setIsOpen] = useState(false)
   const [profileName, setProfileName] = useState<string | null>(null)
@@ -36,6 +25,18 @@ export function DashboardHeader() {
   const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
   const { currency, toggleCurrency, exchangeRate } = useCurrency()
+
+  const userGroups = JSON.parse(localStorage.getItem('user_groups') || '[]')
+  const navigationItems = [
+    { name: "Dashboard", href: "/dashboard" },
+    { name: "Módulos", href: "/modulos" },
+    ...(userGroups.includes('Empleado') ? [] : [{ name: "Costos", href: "/costos" }]),
+    { name: "Ventas", href: "/ventas" },
+    { name: "Clientes", href: "/clientes" },
+    { name: "Productos", href: "/productos" },
+    { name: "Recomendaciones IA", href: "/ia-recomendaciones" },
+    { name: "Reportes", href: "/reportes" },
+  ]
 
   useEffect(() => {
     const load = async () => {
@@ -55,6 +56,7 @@ export function DashboardHeader() {
               setProfileName([(d2.first_name || ''), (d2.last_name || '')].filter(Boolean).join(' ').trim() || d2.username || null)
               setProfileEmail(d2.email || null)
               setProfileAvatar(d2.avatar_url || null)
+              localStorage.setItem('user_groups', JSON.stringify(d2.groups || []))
             }
           }
           return
@@ -64,6 +66,7 @@ export function DashboardHeader() {
         setProfileName([(data.first_name || ''), (data.last_name || '')].filter(Boolean).join(' ').trim() || data.username || null)
         setProfileEmail(data.email || null)
         setProfileAvatar(data.avatar_url || null)
+        localStorage.setItem('user_groups', JSON.stringify(data.groups || []))
       } catch (e) {
         console.error('load profile header', e)
       }
