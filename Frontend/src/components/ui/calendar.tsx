@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { DayPicker } from "react-day-picker"
+import { es } from 'date-fns/locale'
 import "react-day-picker/dist/style.css"
 
 type CalendarProps = {
@@ -29,7 +30,7 @@ export function Calendar({ mode = "single", selected, onSelect, initialFocus, cl
                 selected={selected as any}
                 onSelect={onSelect as any}
                 className="rdp bg-transparent text-sm"
-                locale={undefined}
+                locale={es}
                 modifiersClassNames={{
                     selected: "bg-primary text-primary-foreground rounded",
                     today: "outline outline-1 outline-muted/50 rounded",

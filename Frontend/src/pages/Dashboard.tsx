@@ -73,14 +73,6 @@ export default function Dashboard() {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => handleExport("png")}
-              disabled={exporting}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-60"
-            >
-              {exporting ? "Exportando…" : "Exportar PNG"}
-            </button>
-            <button
-              type="button"
               onClick={() => handleExport("pdf")}
               disabled={exporting}
               className="inline-flex items-center gap-2 rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground shadow hover:bg-secondary/90 disabled:opacity-60"

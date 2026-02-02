@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectTrigger, SelectContent, SelectItem } from "@/components/ui/select"
 import { AIRecommendations } from "@/components/ai-recommendations"
 
-type Product = { id: number; nombre: string; categoria: string }
+type Product = { id: number; nombre: string; categoria: string; costo?: number }
 
 export default function IaRecomendacionesPage() {
     const API_BASE = getApiBase()
@@ -36,6 +36,7 @@ export default function IaRecomendacionesPage() {
                         id: Number(p.id),
                         nombre: p.nombre ?? String(p.id),
                         categoria: p.categoria ?? "Sin categoría",
+                        costo: p.costo ? Number(p.costo) : undefined,
                     }))
                     setProducts(mapped)
                 }
@@ -130,12 +131,22 @@ export default function IaRecomendacionesPage() {
             setResponse('Selecciona un producto antes de generar recomendaciones.')
             return
         }
+        const product = products.find(p => p.id === Number(selectedProduct))
+        if (!product?.costo) {
+            window.alert('El producto no tiene costo agregado. Para generar una recomendación, debe cargarse el costo.')
+            return
+        }
         await requestRecommendation(true)
     }
 
     async function generateByFilters() {
         if (!selectedProduct || Number.isNaN(Number(selectedProduct))) {
             setResponse('Selecciona un producto antes de generar recomendaciones.')
+            return
+        }
+        const product = products.find(p => p.id === Number(selectedProduct))
+        if (!product?.costo) {
+            window.alert('El producto no tiene costo agregado. Para generar una recomendación, debe cargarse el costo.')
             return
         }
         await requestRecommendation(true)
@@ -330,7 +341,7 @@ export default function IaRecomendacionesPage() {
                                 <CardContent>
                                     <div className="min-h-[64px] p-3 rounded-md border bg-card space-y-3">
                                         {loading ? <span className="text-sm text-muted-foreground">Generando…</span> : (
-                                            response ? <p className="text-sm">{response}</p> : <p className="text-sm text-muted-foreground">No hay respuesta. Selecciona filtros y pulsa "Generar recomendaciones automáticas".</p>
+                                            response ? <p className="text-sm text-justify">{response}</p> : <p className="text-sm text-muted-foreground">No hay respuesta. Selecciona filtros y pulsa "Generar recomendaciones automáticas".</p>
                                         )}
 
                                         <div className="flex items-center gap-2">

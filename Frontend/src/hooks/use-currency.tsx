@@ -30,8 +30,9 @@ export const useCurrency = create<CurrencyStore>()(
         const { currency, exchangeRate } = get()
         const value = currency === "VES" ? amount * exchangeRate : amount
 
+        // Usar formato localizado en español para todas las monedas
         if (currency === "USD") {
-          return new Intl.NumberFormat("en-US", {
+          return new Intl.NumberFormat("es-VE", {
             style: "currency",
             currency: "USD",
           }).format(value)

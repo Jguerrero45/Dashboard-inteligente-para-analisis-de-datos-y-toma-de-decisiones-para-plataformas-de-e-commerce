@@ -6,6 +6,7 @@ import SettingsLayout from "@/components/settings/SettingsLayout"
 import AccountSettings from "@/components/settings/AccountSettings"
 import SecuritySettings from "@/components/settings/SecuritySettings"
 import StoreSettings from "@/components/settings/StoreSettings"
+import AppearanceSettings from "@/components/settings/AppearanceSettings"
 
 export default function Perfil() {
     return (
@@ -25,6 +26,7 @@ export default function Perfil() {
                                 { key: "account", label: "Cuenta", content: <AccountSettings /> },
                                 { key: "security", label: "Seguridad", content: <SecuritySettings /> },
                                 { key: "store", label: "Tienda", content: <StoreSettings /> },
+                                { key: "appearance", label: "Apariencia", content: <AppearanceSettings /> },
                             ]}
                         />
                     </div>

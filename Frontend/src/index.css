@@ -6,6 +6,7 @@
 :root {
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "Fira Code", "Courier New", monospace;
+  --root-font-size: 16px;
 
   /* Fondo y superficies: blanco suavizado (ligeramente menos intenso) */
   --color-background: 0 0% 90%;
@@ -142,4 +143,8 @@ body {
   font-family: var(--font-sans);
   background-color: hsl(var(--color-background));
   color: hsl(var(--color-foreground));
+}
+
+html {
+  font-size: var(--root-font-size, 16px);
 }

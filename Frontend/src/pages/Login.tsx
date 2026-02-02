@@ -78,7 +78,7 @@ const Login: React.FC = () => {
                         <div className="flex items-center justify-between">
                             <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">Entrar</Button>
                             <Link to="/register" className="text-sm text-muted-foreground underline">
-                                ¿No tienes cuenta?
+                                ¿Necesitas acceso? Contáctanos
                             </Link>
                         </div>
                     </form>

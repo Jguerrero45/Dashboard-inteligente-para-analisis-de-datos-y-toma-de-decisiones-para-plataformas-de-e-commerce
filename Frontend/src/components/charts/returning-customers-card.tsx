@@ -8,6 +8,7 @@ import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components
 import ChartInfo from "@/components/ui/chart-info"
 import { Button } from "@/components/ui/button"
 import { format, subMonths } from "date-fns"
+import { es } from "date-fns/locale"
 
 interface ReturningRate {
     rate: number
@@ -94,12 +95,12 @@ export function ReturningCustomersCard() {
                         {Array.from({ length: 12 }).map((_, i) => {
                             const d = subMonths(new Date(), i)
                             const key = format(d, 'yyyy-MM')
-                            const label = format(d, 'MMM yyyy')
+                            const label = format(d, 'MMM yyyy', { locale: es })
                             return <option key={key} value={key}>{label}</option>
                         })}
                     </select>
                     <Button variant="outline" size="sm" onClick={() => load(month)}>Aplicar</Button>
-                    <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); load(m); }}>Reset</Button>
+                    <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); load(m); }}>Restablecer</Button>
                     {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
                     {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
                 </div>

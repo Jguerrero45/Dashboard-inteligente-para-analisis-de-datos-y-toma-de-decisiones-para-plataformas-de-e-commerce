@@ -61,7 +61,7 @@ export function MetricsCards() {
     return { text: "—", trend: curr >= 0 ? "up" : "down" }
   }
 
-  const nf = new Intl.NumberFormat()
+  const nf = new Intl.NumberFormat('es-VE')
 
   const currMonthLabel = currentPrev.curr?.month ?? ""
 

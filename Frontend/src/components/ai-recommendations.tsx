@@ -77,13 +77,13 @@ export function AIRecommendations({ recommendations: propRecommendations, onRefr
             {isRefreshing ? "Actualizando…" : "Actualizar"}
           </Button>
         </div>
-        <CardDescription>
+        <CardDescription className="text-justify">
           Análisis de IA para optimizar ventas, marketing y toma de decisiones estratégicas
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {filtered.length === 0 ? (
-          <div className="p-4 text-sm text-muted-foreground">No hay recomendaciones para la fecha seleccionada.</div>
+          <div className="p-4 text-sm text-muted-foreground text-justify">No hay recomendaciones para la fecha seleccionada.</div>
         ) : (
           <>
             {/* Controles de paginación */}
@@ -128,9 +128,9 @@ export function AIRecommendations({ recommendations: propRecommendations, onRefr
                         {rec.priority === "high" ? "Alta" : rec.priority === "medium" ? "Media" : "Baja"}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">{rec.description}</p>
+                    <p className="text-sm text-muted-foreground text-justify">{rec.description}</p>
                     {rec.impact ? (
-                      <p className="text-sm font-medium text-primary">
+                      <p className="text-sm font-medium text-primary text-justify">
                         Beneficio: {rec.impact}
                       </p>
                     ) : null}

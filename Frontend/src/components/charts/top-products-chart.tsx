@@ -93,7 +93,7 @@ export function TopProductsChart() {
                 })}
               </select>
               <Button variant="outline" size="sm" onClick={applyYear}>Aplicar</Button>
-              <Button variant="outline" size="sm" onClick={resetYear}>Reset</Button>
+              <Button variant="outline" size="sm" onClick={resetYear}>Restablecer</Button>
               {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
               {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
             </div>

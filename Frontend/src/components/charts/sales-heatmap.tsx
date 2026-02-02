@@ -6,6 +6,7 @@ import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState } from "react"
 import { useCurrency } from "@/hooks/use-currency"
 import { format, subMonths } from 'date-fns'
+import { es } from "date-fns/locale"
 import { getApiBase } from "@/lib/activeStore"
 
 const daysOfWeek = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
@@ -106,12 +107,12 @@ export function SalesHeatmap() {
               {Array.from({ length: 12 }).map((_, i) => {
                 const d = subMonths(new Date(), i)
                 const key = format(d, 'yyyy-MM')
-                const label = format(d, 'MMM yyyy')
+                const label = format(d, 'MMM yyyy', { locale: es })
                 return <option key={key} value={key}>{label}</option>
               })}
             </select>
             <Button variant="outline" size="sm" onClick={() => loadHeatmap(month)} className="ml-2">Aplicar</Button>
-            <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); loadHeatmap(m); }} className="ml-2">Reset</Button>
+            <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); loadHeatmap(m); }} className="ml-2">Restablecer</Button>
             {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
             {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
           </div>

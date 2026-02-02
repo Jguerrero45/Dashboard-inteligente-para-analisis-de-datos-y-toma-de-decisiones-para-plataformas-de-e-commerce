@@ -28,7 +28,7 @@ const Welcome: React.FC = () => {
               <Button variant="outline" size="sm">Iniciar sesión</Button>
             </Link>
             <Link to="/register">
-              <Button size="sm">Registrarse</Button>
+              <Button size="sm">Contacto</Button>
             </Link>
           </div>
         </div>
@@ -40,7 +40,7 @@ const Welcome: React.FC = () => {
           <div className="max-w-6xl mx-auto px-6 py-12 lg:py-16 grid gap-10 lg:grid-cols-[1.1fr,1fr] items-center">
             {/* Texto */}
             <div className="space-y-6">
-              <p className="text-xs font-semibold tracking-[0.2em] uppercase text-sky-600">
+              <p className="text-xl font-semibold tracking-[0.2em] uppercase text-sky-600">
                 Gestión gerencial para e-commerce
               </p>
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
@@ -82,22 +82,22 @@ const Welcome: React.FC = () => {
                 {/* Top cards */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl border border-border bg-card p-3 text-card-foreground">
-                    <p className="text-[11px] text-muted-foreground">Ventas totales</p>
+                    <p className="text-[15px] text-muted-foreground">Ventas totales</p>
                     <p className="mt-1 text-lg font-semibold text-foreground">
                       Bs295,420
                     </p>
-                    <p className="mt-1 text-[11px] text-emerald-600">
+                    <p className="mt-1 text-[15px] text-emerald-600">
                       ↑ 18% vs. mes anterior
                     </p>
                   </div>
                   <div className="rounded-xl border border-border bg-card p-3 text-card-foreground">
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[15px] text-muted-foreground">
                       Ticket promedio
                     </p>
                     <p className="mt-1 text-lg font-semibold text-foreground">
                       $2,790
                     </p>
-                    <p className="mt-1 text-[11px] text-sky-600">
+                    <p className="mt-1 text-[15px] text-sky-600">
                       VES y USD en una sola vista (BCV)
                     </p>
                   </div>
@@ -106,10 +106,10 @@ const Welcome: React.FC = () => {
                 {/* Chart mock mejorado */}
                 <div className="rounded-xl border border-border bg-card p-4 text-card-foreground">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-card-foreground">
+                    <p className="text-sm font-medium text-card-foreground">
                       Ventas mensuales
                     </p>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[15px] text-muted-foreground">
                       Últimos 12 meses
                     </span>
                   </div>
@@ -144,14 +144,14 @@ const Welcome: React.FC = () => {
                 {/* Bottom list */}
                 <div className="rounded-xl border border-border bg-card p-3 text-card-foreground">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-card-foreground">
+                    <p className="text-sm font-medium text-card-foreground">
                       Categorías con mayor ingreso
                     </p>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[15px] text-muted-foreground">
                       Top 3 · 30 días
                     </span>
                   </div>
-                  <div className="space-y-1.5 text-[11px]">
+                  <div className="space-y-1.5 text-[15px]">
                     <div className="flex justify-between">
                       <span className="text-card-foreground">Electrónica</span>
                       <span className="text-muted-foreground">Bs93,118</span>

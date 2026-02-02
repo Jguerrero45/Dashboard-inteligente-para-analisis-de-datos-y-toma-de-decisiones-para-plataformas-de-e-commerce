@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback } from "react"
 import { useCurrency } from "@/hooks/use-currency"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import { getApiBase } from "@/lib/activeStore"
 
 const getYear = (value?: string) => {
@@ -20,7 +21,7 @@ const getYear = (value?: string) => {
 
 const buildYearView = (months: string[], series: any[], year: string, monthsIso?: string[]) => {
   const monthMeta = Array.from({ length: 12 }).map((_, i) => ({
-    label: format(new Date(Number(year), i, 1), 'MMM'),
+    label: format(new Date(Number(year), i, 1), 'MMM', { locale: es }),
     iso: format(new Date(Number(year), i, 1), 'yyyy-MM'),
   }))
 
@@ -151,7 +152,7 @@ export function CustomersChart() {
             })}
           </select>
           <Button variant="outline" size="sm" onClick={() => loadData(year)} className="ml-2">Aplicar</Button>
-          <Button variant="outline" size="sm" onClick={() => { const y = format(new Date(), 'yyyy'); setYear(y); loadData(y); }} className="ml-2">Reset</Button>
+          <Button variant="outline" size="sm" onClick={() => { const y = format(new Date(), 'yyyy'); setYear(y); loadData(y); }} className="ml-2">Restablecer</Button>
           {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
           {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
         </div>

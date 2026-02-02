@@ -247,9 +247,6 @@ export default function StoreSettings() {
                                 ))}
                             </div>
                         )}
-                        <div className="mt-4">
-                            <Button variant="secondary" onClick={() => setActive(null)}>Quitar tienda activa</Button>
-                        </div>
                     </div>
                 </div>
             </CardContent>

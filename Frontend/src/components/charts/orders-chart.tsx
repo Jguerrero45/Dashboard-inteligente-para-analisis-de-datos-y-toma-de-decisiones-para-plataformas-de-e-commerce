@@ -9,6 +9,7 @@ import { useCallback } from "react"
 import { getApiBase } from "@/lib/activeStore"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
+import { es } from "date-fns/locale"
 
 const getYear = (value?: string) => {
     if (!value) return ""
@@ -20,7 +21,7 @@ const getYear = (value?: string) => {
 
 const buildYearSeries = (rows: any[], key: string, year: string) => {
     const months = Array.from({ length: 12 }).map((_, i) => ({
-        label: format(new Date(Number(year), i, 1), 'MMM'),
+        label: format(new Date(Number(year), i, 1), 'MMM', { locale: es }),
         iso: format(new Date(Number(year), i, 1), 'yyyy-MM'),
     }))
 
@@ -112,7 +113,7 @@ export function OrdersChart() {
                         })}
                     </select>
                     <Button variant="outline" size="sm" onClick={() => loadData(year)} className="ml-2">Aplicar</Button>
-                    <Button variant="outline" size="sm" onClick={() => { const y = format(new Date(), 'yyyy'); setYear(y); loadData(y); }} className="ml-2">Reset</Button>
+                    <Button variant="outline" size="sm" onClick={() => { const y = format(new Date(), 'yyyy'); setYear(y); loadData(y); }} className="ml-2">Restablecer</Button>
                     {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
                     {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
                 </div>
