@@ -965,6 +965,116 @@ class ExportMixin:
     """Helper mixin to fetch products queryset based on request params."""
 
     ALLOWED_COUNTS = {10, 25, 50, 100, 250, 500, 1000}
+    PRODUCT_COLUMNS = [
+        'id', 'nombre', 'categoria', 'precio', 'costo', 'stock', 'vendidos', 'tendencias', 'estado'
+    ]
+    CLIENT_COLUMNS = [
+        'id', 'display_id', 'nombre', 'apellido', 'correo', 'telefono', 'ciudad', 'fecha_registro', 'tipo_cliente'
+    ]
+    VENTA_COLUMNS = [
+        'id', 'fecha', 'cliente_id', 'cliente_nombre', 'precio_total', 'metodo_compra', 'estado', 'productos'
+    ]
+
+    PRODUCT_LABELS = {
+        'id': 'id',
+        'nombre': 'nombre',
+        'categoria': 'categoria',
+        'precio': 'precio',
+        'costo': 'costo',
+        'stock': 'stock',
+        'vendidos': 'vendidos',
+        'tendencias': 'tendencias',
+        'estado': 'estado',
+    }
+    CLIENT_LABELS = {
+        'id': 'id',
+        'display_id': 'display_id',
+        'nombre': 'nombre',
+        'apellido': 'apellido',
+        'correo': 'email',
+        'telefono': 'telefono',
+        'ciudad': 'ciudad',
+        'fecha_registro': 'fecha_registro',
+        'tipo_cliente': 'tipo_cliente',
+    }
+    VENTA_LABELS = {
+        'id': 'id',
+        'fecha': 'fecha',
+        'cliente_id': 'cliente_id',
+        'cliente_nombre': 'cliente',
+        'precio_total': 'precio_total',
+        'metodo_compra': 'metodo_compra',
+        'estado': 'estado',
+        'productos': 'productos',
+    }
+
+    def _parse_columns(self, params, tipo, max_products=0):
+        raw = (params.get('columns') or params.get('cols') or '').strip()
+        if not raw:
+            return None
+
+        cols = [c.strip() for c in raw.split(',') if c.strip()]
+        if not cols:
+            return None
+
+        if tipo == 'productos':
+            allowed = set(self.PRODUCT_COLUMNS)
+        elif tipo == 'clientes':
+            allowed = set(self.CLIENT_COLUMNS)
+        elif tipo == 'ventas':
+            allowed = set(self.VENTA_COLUMNS)
+        else:
+            return None
+
+        selected = []
+        for c in cols:
+            if tipo == 'ventas' and c.startswith('producto_'):
+                try:
+                    idx = int(c.rsplit('_', 1)[1])
+                except Exception:
+                    continue
+                if idx > 0 and (max_products <= 0 or idx <= max_products):
+                    selected.append(c)
+                continue
+
+            if c in allowed:
+                selected.append(c)
+
+        if not selected:
+            return None
+
+        return selected
+
+    def _expand_venta_columns(self, columns, max_products):
+        expanded = []
+        for c in columns:
+            if c == 'productos':
+                expanded.extend([f'producto_{i}' for i in range(1, max_products + 1)])
+            else:
+                expanded.append(c)
+        return expanded
+
+    def _build_headers(self, tipo, columns, max_products=0):
+        headers = []
+        if tipo == 'productos':
+            labels = self.PRODUCT_LABELS
+        elif tipo == 'clientes':
+            labels = self.CLIENT_LABELS
+        else:
+            labels = self.VENTA_LABELS
+
+        for c in columns:
+            if tipo == 'ventas' and c == 'productos':
+                headers.extend([f'Producto {i}' for i in range(1, max_products + 1)])
+            elif tipo == 'ventas' and c.startswith('producto_'):
+                try:
+                    idx = int(c.rsplit('_', 1)[1])
+                    headers.append(f'Producto {idx}')
+                except Exception:
+                    headers.append(c)
+            else:
+                headers.append(labels.get(c, c))
+        return headers
 
     def get_products_qs(self, request):
         from .models import Productos
@@ -1031,13 +1141,13 @@ class ExportCSVView(View, ExportMixin):
         # choose entity
         if tipo == 'productos':
             qs = self.get_products_qs(request)
-            from .models import Productos
-            fields = [f.name for f in Productos._meta.fields]
+            selected = self._parse_columns(params, 'productos') or list(self.PRODUCT_COLUMNS)
+            fields = selected
             entity_label = 'productos'
         elif tipo == 'clientes':
             qs = self.get_clients_qs(request)
-            from .models import Clientes
-            fields = [f.name for f in Clientes._meta.fields]
+            selected = self._parse_columns(params, 'clientes') or list(self.CLIENT_COLUMNS)
+            fields = selected
             entity_label = 'clientes'
         elif tipo == 'ventas':
             # for ventas we expect date_from/date_to params
@@ -1071,10 +1181,8 @@ class ExportCSVView(View, ExportMixin):
             qs = qs.order_by('-fecha')
             max_items = qs.annotate(items_cnt=Count('items')).aggregate(
                 max=Max('items_cnt'))['max'] or 0
-            extra_product_fields = [f'producto_{i}'
-                                    for i in range(1, max_items + 1)]
-            fields = ['id', 'fecha', 'cliente_id', 'cliente_nombre',
-                      'precio_total', 'metodo_compra', 'estado', *extra_product_fields]
+            selected = self._parse_columns(params, 'ventas', max_items) or list(self.VENTA_COLUMNS)
+            fields = self._expand_venta_columns(selected, max_items)
             entity_label = 'ventas'
         else:
             return JsonResponse({'detail': 'tipo no soportado'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1151,35 +1259,145 @@ class ExportPDFView(View, ExportMixin):
         # choose entity
         if tipo == 'productos':
             qs = self.get_products_qs(request)
-            products = []
+            selected = self._parse_columns(params, 'productos') or list(self.PRODUCT_COLUMNS)
+            headers = self._build_headers('productos', selected)
+            rows = []
             for p in qs:
-                products.append({
-                    'id': p.id,
-                    'nombre': p.nombre or 'N/A',
-                    'categoria': p.categoria or 'N/A',
-                    'precio': p.precio if p.precio not in [None, ''] else 0,
-                    'stock': p.stock if getattr(p, 'stock', None) not in [None, ''] else 0,
-                    'costo': getattr(p, 'costo', None) if getattr(p, 'costo', None) not in [None, ''] else 0,
-                })
-            context = {'products': products, 'now': datetime.datetime.utcnow()}
+                row = []
+                for c in selected:
+                    val = getattr(p, c, '')
+                    if c == 'costo':
+                        val = getattr(p, 'costo', None)
+                    if val is None or val == '':
+                        val = 'N/A'
+                    row.append(val)
+                rows.append(row)
+            context = {
+                'headers': headers,
+                'rows': rows,
+                'now': datetime.datetime.utcnow(),
+                'total_count': len(rows),
+                'total_columns': len(headers),
+            }
             template_name = 'report_products.html'
             entity_label = 'productos'
         elif tipo == 'clientes':
             qs = self.get_clients_qs(request)
-            clients = []
+            selected = self._parse_columns(params, 'clientes') or list(self.CLIENT_COLUMNS)
+            headers = self._build_headers('clientes', selected)
+            rows = []
             for c in qs:
-                clients.append({
-                    'id': c.id,
-                    'nombre': c.nombre or 'N/A',
-                    'apellido': c.apellido or 'N/A',
-                    'correo': c.correo or 'N/A',
-                    'telefono': c.telefono or 'N/A',
-                    'fecha_registro': c.fecha_registro.isoformat() if c.fecha_registro else 'N/A',
-                    'tipo_cliente': getattr(c, 'tipo_cliente', None) or 'N/A',
-                })
-            context = {'clients': clients, 'now': datetime.datetime.utcnow()}
+                row = []
+                for col in selected:
+                    if col == 'correo':
+                        val = c.correo
+                    else:
+                        val = getattr(c, col, '')
+                    if isinstance(val, (datetime.date, datetime.datetime)):
+                        val = val.isoformat()
+                    if val is None or val == '':
+                        val = 'N/A'
+                    row.append(val)
+                rows.append(row)
+            context = {
+                'headers': headers,
+                'rows': rows,
+                'now': datetime.datetime.utcnow(),
+                'total_count': len(rows),
+                'total_columns': len(headers),
+            }
             template_name = 'report_clients.html'
             entity_label = 'clientes'
+
+        elif tipo == 'ventas':
+            params = getattr(request, 'GET', None) or getattr(
+                request, 'query_params', None) or {}
+            from django.utils.dateparse import parse_datetime, parse_date
+            df = params.get('date_from')
+            dt = params.get('date_to')
+            start = end = None
+            if df or dt:
+                if not (df and dt):
+                    return JsonResponse({'detail': 'date_from and date_to are required together when filtering ventas'}, status=status.HTTP_400_BAD_REQUEST)
+
+                start = parse_datetime(df) or parse_date(df)
+                end = parse_datetime(dt) or parse_date(dt)
+                if start is None or end is None:
+                    return JsonResponse({'detail': 'Invalid date_from/date_to format. Use ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                import datetime as _dt
+                if isinstance(start, _dt.date) and not isinstance(start, _dt.datetime):
+                    start = _dt.datetime.combine(start, _dt.time.min)
+                if isinstance(end, _dt.date) and not isinstance(end, _dt.datetime):
+                    end = _dt.datetime.combine(end, _dt.time.max)
+
+            from .models import Ventas
+            qs = Ventas.objects.select_related('cliente').prefetch_related('items__producto')
+            if start and end:
+                qs = qs.filter(fecha__gte=start, fecha__lte=end)
+            qs = qs.order_by('-fecha')
+
+            max_items = qs.annotate(items_cnt=Count('items')).aggregate(
+                max=Max('items_cnt'))['max'] or 0
+            selected = self._parse_columns(params, 'ventas', max_items) or list(self.VENTA_COLUMNS)
+            headers = self._build_headers('ventas', selected, max_items)
+
+            rows = []
+            for v in qs:
+                row = []
+                items_cache = None
+                product_names = None
+                for col in selected:
+                    if col == 'cliente_id':
+                        val = getattr(v, 'cliente_id', '')
+                    elif col == 'cliente_nombre':
+                        cli = getattr(v, 'cliente', None)
+                        val = f"{getattr(cli, 'nombre', '')} {getattr(cli, 'apellido', '')}" if cli else ''
+                    elif col.startswith('producto_'):
+                        if items_cache is None:
+                            try:
+                                items_cache = list(v.items.all())
+                            except Exception:
+                                items_cache = []
+                        if product_names is None:
+                            product_names = [getattr(getattr(i, 'producto', None), 'nombre', '') for i in items_cache]
+                        try:
+                            idx = int(col.rsplit('_', 1)[1]) - 1
+                        except Exception:
+                            idx = -1
+                        val = product_names[idx] if 0 <= idx < len(product_names) else 'N/A'
+                    elif col == 'productos':
+                        if items_cache is None:
+                            try:
+                                items_cache = list(v.items.all())
+                            except Exception:
+                                items_cache = []
+                        product_names = [getattr(getattr(i, 'producto', None), 'nombre', '') for i in items_cache]
+                        if not product_names:
+                            product_names = []
+                        for i in range(0, max_items):
+                            row.append(product_names[i] if i < len(product_names) else 'N/A')
+                        continue
+                    else:
+                        val = getattr(v, col, '')
+
+                    if isinstance(val, (datetime.date, datetime.datetime)):
+                        val = val.isoformat()
+                    if val is None or val == '':
+                        val = 'N/A'
+                    row.append(val)
+
+                rows.append(row)
+
+            context = {
+                'headers': headers,
+                'rows': rows,
+                'now': datetime.datetime.utcnow(),
+                'total_count': len(rows),
+                'total_columns': len(headers),
+            }
+            template_name = 'report_sales.html'
+            entity_label = 'ventas'
 
         elif tipo == 'graficas':
             # Construir datos estáticos para las gráficas (sin iframe)

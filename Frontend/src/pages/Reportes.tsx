@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -48,6 +48,49 @@ const tiposReporte = [
 
 ]
 
+type ColumnOption = { id: string; label: string }
+
+const columnasPorTipo: Record<string, ColumnOption[]> = {
+  ventas: [
+    { id: "id", label: "ID" },
+    { id: "fecha", label: "Fecha" },
+    { id: "cliente_nombre", label: "Cliente" },
+    { id: "cliente_id", label: "Cliente ID" },
+    { id: "precio_total", label: "Total" },
+    { id: "metodo_compra", label: "Método" },
+    { id: "estado", label: "Estado" },
+    { id: "productos", label: "Productos" },
+  ],
+  productos: [
+    { id: "id", label: "ID" },
+    { id: "nombre", label: "Nombre" },
+    { id: "categoria", label: "Categoría" },
+    { id: "precio", label: "Precio" },
+    { id: "costo", label: "Costo" },
+    { id: "stock", label: "Stock" },
+    { id: "vendidos", label: "Vendidos" },
+    { id: "tendencias", label: "Tendencia" },
+    { id: "estado", label: "Estado" },
+  ],
+  clientes: [
+    { id: "id", label: "ID" },
+    { id: "display_id", label: "ID visible" },
+    { id: "nombre", label: "Nombre" },
+    { id: "apellido", label: "Apellido" },
+    { id: "correo", label: "Email" },
+    { id: "telefono", label: "Teléfono" },
+    { id: "ciudad", label: "Ciudad" },
+    { id: "fecha_registro", label: "Fecha registro" },
+    { id: "tipo_cliente", label: "Tipo" },
+  ],
+}
+
+const columnasDefault: Record<string, string[]> = {
+  ventas: ["id", "fecha", "cliente_nombre", "precio_total", "metodo_compra", "estado", "productos"],
+  productos: ["id", "nombre", "categoria", "precio", "stock", "vendidos", "tendencias", "estado"],
+  clientes: ["id", "nombre", "apellido", "correo", "telefono", "ciudad", "fecha_registro", "tipo_cliente"],
+}
+
 export default function ReportesPage() {
   const [tipoReporte, setTipoReporte] = useState("ventas")
   const [formato, setFormato] = useState("csv")
@@ -55,6 +98,35 @@ export default function ReportesPage() {
   const [dateFrom, setDateFrom] = useState<Date>()
   const [dateTo, setDateTo] = useState<Date>()
   const [generando, setGenerando] = useState(false)
+  const [columnasSeleccionadas, setColumnasSeleccionadas] = useState<Record<string, string[]>>(columnasDefault)
+
+  useEffect(() => {
+    setColumnasSeleccionadas((prev) => {
+      if (prev[tipoReporte]) return prev
+      return { ...prev, [tipoReporte]: columnasDefault[tipoReporte] || [] }
+    })
+  }, [tipoReporte])
+
+  const columnasDisponibles = columnasPorTipo[tipoReporte] || []
+  const columnasActuales = columnasSeleccionadas[tipoReporte] || columnasDefault[tipoReporte] || []
+
+  const toggleColumna = (colId: string) => {
+    setColumnasSeleccionadas((prev) => {
+      const current = prev[tipoReporte] || columnasDefault[tipoReporte] || []
+      const exists = current.includes(colId)
+      const nextSet = new Set(current)
+      if (exists) {
+        nextSet.delete(colId)
+      } else {
+        nextSet.add(colId)
+      }
+      const next = columnasDisponibles.map((c) => c.id).filter((id) => nextSet.has(id))
+      if (next.length === 0) {
+        return prev
+      }
+      return { ...prev, [tipoReporte]: next }
+    })
+  }
 
   // Función para generar reporte
   const generarReporte = async () => {
@@ -71,6 +143,11 @@ export default function ReportesPage() {
         params.set("months", "12")
         params.set("top", "5")
         params.set("tipo", tipoReporte)
+        if (columnasActuales.length === 0) {
+          alert("Selecciona al menos una columna para exportar.")
+          return
+        }
+        params.set("columns", columnasActuales.join(","))
         // include product count for PDF requests as well
         params.set('count', productCount || '10')
         if (dateFrom) params.set("date_from", dateFrom.toISOString())
@@ -128,6 +205,11 @@ export default function ReportesPage() {
         // CSV/Excel -> call CSV export endpoint
         const params = new URLSearchParams()
         params.set('tipo', tipoReporte)
+        if (columnasActuales.length === 0) {
+          alert("Selecciona al menos una columna para exportar.")
+          return
+        }
+        params.set('columns', columnasActuales.join(','))
         // map excel to csv endpoint as backend returns CSV
         const count = productCount || '10'
         params.set('count', count)
@@ -303,6 +385,29 @@ export default function ReportesPage() {
                     <SelectItem value="all">Todos</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Columnas a Exportar */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Columnas a Exportar</h3>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {columnasDisponibles.map((col) => (
+                    <label key={col.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={columnasActuales.includes(col.id)}
+                        onChange={() => toggleColumna(col.id)}
+                      />
+                      <span>{col.label}</span>
+                    </label>
+                  ))}
+                </div>
+                {tipoReporte === 'ventas' && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Desmarca "Productos" si quieres exportar solo el resumen de la venta.
+                  </p>
+                )}
               </div>
 
               {/* Formato de Exportación */}

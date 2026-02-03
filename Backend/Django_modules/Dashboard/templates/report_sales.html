@@ -5,9 +5,22 @@
   <meta charset="utf-8">
   <title>Reporte de Ventas</title>
   <style>
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+
     body {
       font-family: Arial, sans-serif;
       font-size: 12px;
+      margin: 0;
+    }
+
+    .rotated {
+      transform: rotate(90deg) translateY(-100%);
+      transform-origin: top left;
+      width: 100vh;
+      height: 100vw;
     }
 
     table {
@@ -33,45 +46,35 @@
 </head>
 
 <body>
-  <div class="meta">
-    <h2>Reporte de Ventas</h2>
-    <div>Generado: {{ now }}</div>
-    <div>Total ventas: {{ sales|length }}</div>
+  <div class="rotated">
+    <div class="meta">
+      <h2>Reporte de Ventas</h2>
+      <div>Generado: {{ now }}</div>
+      <div>Total ventas: {{ total_count }}</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          {% for h in headers %}
+          <th>{{ h }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          {% for cell in row %}
+          <td>{{ cell }}</td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{{ total_columns }}">No hay ventas en el rango seleccionado</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-  <table>
-    <thead>
-      <tr>
-        <th>id</th>
-        <th>fecha</th>
-        <th>cliente</th>
-        <th>precio_total</th>
-        <th>metodo_compra</th>
-        <th>estado</th>
-        {% for h in product_headers %}
-        <th>{{ h }}</th>
-        {% endfor %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for v in sales %}
-      <tr>
-        <td>{{ v.id }}</td>
-        <td>{{ v.fecha }}</td>
-        <td>{{ v.cliente }}</td>
-        <td>{{ v.precio_total }}</td>
-        <td>{{ v.metodo_compra }}</td>
-        <td>{{ v.estado }}</td>
-        {% for p in v.productos %}
-        <td>{{ p }}</td>
-        {% endfor %}
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="{{ total_columns }}">No hay ventas en el rango seleccionado</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
 </body>
 
 </html>

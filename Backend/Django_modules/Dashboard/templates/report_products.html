@@ -4,7 +4,18 @@
   <meta charset="utf-8">
   <title>Reporte de Productos</title>
   <style>
-    body { font-family: Arial, sans-serif; font-size: 12px; }
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+
+    body { font-family: Arial, sans-serif; font-size: 12px; margin: 0; }
+    .rotated {
+      transform: rotate(90deg) translateY(-100%);
+      transform-origin: top left;
+      width: 100vh;
+      height: 100vw;
+    }
     table { border-collapse: collapse; width: 100%; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
     th { background: #f5f5f5; }
@@ -12,41 +23,32 @@
   </style>
 </head>
 <body>
-  <div class="meta">
-    <h2>Reporte de Productos</h2>
-    <div>Generado: {{ now }}</div>
-    <div>Total productos: {{ products|length }}</div>
+  <div class="rotated">
+    <div class="meta">
+      <h2>Reporte de Productos</h2>
+      <div>Generado: {{ now }}</div>
+      <div>Total productos: {{ total_count }}</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          {% for h in headers %}
+          <th>{{ h }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          {% for cell in row %}
+          <td>{{ cell }}</td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{{ total_columns }}">No hay productos</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-  <table>
-    <thead>
-      <tr>
-        {# Build table headers from first object's fields if possible #}
-        <th>id</th>
-        <th>nombre</th>
-        <th>categoria</th>
-        <th>precio</th>
-        <th>stock</th>
-        <th>vendidos</th>
-        <th>tendencias</th>
-        <th>estado</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for p in products %}
-      <tr>
-        <td>{{ p.id }}</td>
-        <td>{{ p.nombre }}</td>
-        <td>{{ p.categoria }}</td>
-        <td>{{ p.precio }}</td>
-        <td>{{ p.stock }}</td>
-        <td>{{ p.vendidos }}</td>
-        <td>{{ p.tendencias }}</td>
-        <td>{{ p.estado }}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="8">No hay productos</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
 </body>
 </html>
