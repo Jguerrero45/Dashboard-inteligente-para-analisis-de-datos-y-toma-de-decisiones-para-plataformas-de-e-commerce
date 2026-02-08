@@ -107,10 +107,10 @@ const Welcome: React.FC = () => {
                 <div className="rounded-xl border border-border bg-card p-4 text-card-foreground">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-medium text-card-foreground">
-                      Ventas mensuales
+                      Ventas anuales
                     </p>
                     <span className="text-[15px] text-muted-foreground">
-                      Últimos 12 meses
+                      Últimos 5 años
                     </span>
                   </div>
 

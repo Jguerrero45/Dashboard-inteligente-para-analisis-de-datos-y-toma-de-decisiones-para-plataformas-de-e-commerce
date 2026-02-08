@@ -126,10 +126,10 @@ export function CustomersChart() {
         <div className="flex items-start justify-between w-full">
           <div>
             <CardTitle>Mejores clientes</CardTitle>
-            <CardDescription>Comparativa de gasto mensual de los clientes con mayor gasto</CardDescription>
+            <CardDescription>Comparativa de gasto anual de los clientes con mayor gasto</CardDescription>
           </div>
           <ChartInfo title="Clientes">
-            <p className="text-sm">Muestra los clientes que más gastaron y permite ver el detalle mensual al pulsar "...".</p>
+            <p className="text-sm">Muestra los clientes que más gastaron y permite ver el detalle anual al pulsar "...".</p>
           </ChartInfo>
         </div>
       </CardHeader>
@@ -180,7 +180,7 @@ export function CustomersChart() {
             })}
           </LineChart>
         </ChartContainer>
-        {/* Resumen: cada cliente muestra un punto de color, nombre, total y botón '...' para desplegar detalle mensual */}
+        {/* Resumen: cada cliente muestra un punto de color, nombre, total y botón '...' para desplegar detalle anual */}
         <div className="mt-4 space-y-3">
           {series.map((s: any, i: number) => {
             const id = s.cliente_id

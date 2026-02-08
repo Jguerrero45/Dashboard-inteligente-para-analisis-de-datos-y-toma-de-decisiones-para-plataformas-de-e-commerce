@@ -7,8 +7,7 @@ import { ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, Pola
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 import { Button } from "@/components/ui/button"
-import { format, subMonths } from "date-fns"
-import { es } from "date-fns/locale"
+import { format, subYears } from "date-fns"
 
 
 interface CategoryValue {
@@ -21,17 +20,17 @@ export function CategoryPerformanceRadar() {
 
     const [data, setData] = useState<CategoryValue[]>([])
     const [loading, setLoading] = useState(true)
-    const [month, setMonth] = useState<string>(format(new Date(), 'yyyy-MM'))
+    const [year, setYear] = useState<string>(format(new Date(), 'yyyy'))
     const [error, setError] = useState<string | null>(null)
 
-    const load = async (m?: string) => {
+    const load = async (y?: string) => {
         setLoading(true)
         setError(null)
         let mounted = true
         try {
             const API_BASE = getApiBase()
             const params = new URLSearchParams()
-            if (m) params.set('month', m)
+            if (y) params.set('year', y)
             const res = await fetch(`${API_BASE}/metrics/revenue-by-category/?days=30${params.toString() ? `&${params}` : ''}`)
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             const json = await res.json()
@@ -55,7 +54,7 @@ export function CategoryPerformanceRadar() {
     }
 
     useEffect(() => {
-        load(month)
+        load(year)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
@@ -70,7 +69,7 @@ export function CategoryPerformanceRadar() {
                 <div className="flex items-start justify-between w-full">
                     <div>
                         <CardTitle>Rendimiento por Categoría</CardTitle>
-                        <CardDescription>Ingresos actuales por categoría (30 días)</CardDescription>
+                        <CardDescription>Ingresos actuales por categoría (en el año seleccionado)</CardDescription>
                     </div>
                     <ChartInfo title="Rendimiento por Categoría">
                         <p className="text-sm">Radar de ingresos actuales por categoría para evitar redundancia con otras vistas.</p>
@@ -79,10 +78,10 @@ export function CategoryPerformanceRadar() {
             </CardHeader>
             <CardContent>
                 <div className="flex items-center gap-2 mb-2">
-                    <label className="text-sm">Mes</label>
+                    <label className="text-sm">Año</label>
                     <select
-                        value={month}
-                        onChange={(e) => setMonth(e.target.value)}
+                        value={year}
+                        onChange={(e) => setYear(e.target.value)}
                         className="rounded px-2 py-1"
                         style={{
                             backgroundColor: 'hsl(var(--color-popover))',
@@ -90,15 +89,15 @@ export function CategoryPerformanceRadar() {
                             borderColor: 'hsl(var(--color-border))',
                         }}
                     >
-                        {Array.from({ length: 12 }).map((_, i) => {
-                            const d = subMonths(new Date(), i)
-                            const key = format(d, 'yyyy-MM')
-                            const label = format(d, 'MMM yyyy', { locale: es })
+                        {Array.from({ length: 5 }).map((_, i) => {
+                            const d = subYears(new Date(), i)
+                            const key = format(d, 'yyyy')
+                            const label = format(d, 'yyyy')
                             return <option key={key} value={key}>{label}</option>
                         })}
                     </select>
-                    <Button variant="outline" size="sm" onClick={() => load(month)}>Aplicar</Button>
-                    <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); load(m); }}>Restablecer</Button>
+                    <Button variant="outline" size="sm" onClick={() => load(year)}>Aplicar</Button>
+                    <Button variant="outline" size="sm" onClick={() => { const y = format(new Date(), 'yyyy'); setYear(y); load(y); }}>Restablecer</Button>
                     {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
                     {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
                 </div>

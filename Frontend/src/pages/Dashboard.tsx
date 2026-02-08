@@ -31,10 +31,10 @@ type ExportSectionId =
 
 const EXPORT_SECTIONS: { id: ExportSectionId; label: string }[] = [
   { id: "metrics", label: "Resumen de métricas" },
-  { id: "sales", label: "Ventas Mensuales" },
+  { id: "sales", label: "Ventas Anuales" },
   { id: "revenue", label: "Ingresos por Categoría" },
-  { id: "orders", label: "Pedidos Mensuales" },
-  { id: "returning", label: "% de clientes que vuelven" },
+  { id: "orders", label: "Cantidad de Pedidos Anuales" },
+  { id: "returning", label: "% de clientes que regresan" },
   { id: "margin", label: "Margen por Categoría" },
   { id: "category", label: "Rendimiento por Categoría" },
   { id: "products", label: "Distribución de Productos" },

@@ -7,34 +7,58 @@ import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState, useCallback } from "react"
 import { getApiBase } from "@/lib/activeStore"
 import { Button } from "@/components/ui/button"
-import { format, subMonths } from "date-fns"
-import { es } from "date-fns/locale"
+import { format, subYears } from "date-fns"
 
 export function RevenueChart() {
   const [data, setData] = useState<any[]>([])
-  const [month, setMonth] = useState<string>(format(new Date(), 'yyyy-MM'))
+  const [year, setYear] = useState<string>(format(new Date(), 'yyyy'))
+  const [compareYear, setCompareYear] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const loadData = (m?: string) => {
+  const loadData = async (y?: string, compYear?: string) => {
     setLoading(true)
     setError(null)
     let mounted = true
     const API_BASE = getApiBase()
     const params = new URLSearchParams()
-    if (m) params.set('month', m)
-    fetch(`${API_BASE}/metrics/revenue-by-category/` + (params.toString() ? `?${params}` : ''))
-      .then((r) => r.json())
-      .then((json) => {
-        if (mounted && Array.isArray(json)) setData(json)
-      })
-      .catch((err) => { setError(String(err)) })
-      .finally(() => { if (mounted) setLoading(false) })
+    if (y) params.set('year', y)
+    const fetchCurrent = fetch(`${API_BASE}/metrics/revenue-by-category/` + (params.toString() ? `?${params}` : '')).then(r => r.json())
+    let fetchPrev: Promise<any> | null = null
+    if (compYear) {
+      const paramsPrev = new URLSearchParams()
+      paramsPrev.set('year', compYear)
+      fetchPrev = fetch(`${API_BASE}/metrics/revenue-by-category/` + (paramsPrev.toString() ? `?${paramsPrev}` : '')).then(r => r.json())
+    }
+    try {
+      const [currentData, prevData] = await Promise.all([fetchCurrent, fetchPrev || Promise.resolve(null)])
+      if (mounted) {
+        if (Array.isArray(currentData)) {
+          let mapped = currentData
+          if (prevData && Array.isArray(prevData)) {
+            mapped = currentData.map((item: any) => {
+              const prevItem = prevData.find((p: any) => p.category === item.category)
+              return {
+                ...item,
+                revenue_prev: prevItem ? prevItem.revenue : 0,
+              }
+            })
+          }
+          setData(mapped)
+        } else {
+          setData([])
+        }
+      }
+    } catch (err) {
+      if (mounted) setError(String(err))
+    } finally {
+      if (mounted) setLoading(false)
+    }
     return () => { mounted = false }
   }
 
   useEffect(() => {
-    loadData(month)
+    loadData(year, compareYear)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -46,6 +70,10 @@ export function RevenueChart() {
       label: "Ingresos",
       color: "hsl(var(--chart-2))",
     },
+    revenue_prev: {
+      label: "Ingresos Año Anterior",
+      color: "hsl(var(--chart-3))",
+    },
   }
   const onMove = useCallback((_e: any) => {
     // noop - reserved for future interaction handling
@@ -56,20 +84,20 @@ export function RevenueChart() {
       <CardHeader>
         <div className="flex items-start justify-between w-full">
           <div>
-            <CardTitle>Ingresos por Categoría</CardTitle>
-            <CardDescription>Ingresos (últimos 30 días)</CardDescription>
+            <CardTitle>Ingresos por Categoría Anual</CardTitle>
+            <CardDescription>Ingresos por categoría en el año seleccionado</CardDescription>
           </div>
-          <ChartInfo title="Ingresos por Categoría">
-            <p className="text-sm">Muestra solo los ingresos por categoría en la ventana reciente.</p>
+          <ChartInfo title="Ingresos por Categoría Anual">
+            <p className="text-sm">Muestra los ingresos por categoría en el año seleccionado.</p>
           </ChartInfo>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-2 mb-2">
-          <label className="text-sm">Mes</label>
+          <label className="text-sm">Año</label>
           <select
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
             className="rounded px-2 py-1"
             style={{
               backgroundColor: 'hsl(var(--color-popover))',
@@ -77,15 +105,32 @@ export function RevenueChart() {
               borderColor: 'hsl(var(--color-border))',
             }}
           >
-            {Array.from({ length: 12 }).map((_, i) => {
-              const d = subMonths(new Date(), i)
-              const key = format(d, 'yyyy-MM')
-              const label = format(d, 'MMM yyyy', { locale: es })
+            {Array.from({ length: 5 }).map((_, i) => {
+              const d = subYears(new Date(), i)
+              const key = format(d, 'yyyy')
+              const label = format(d, 'yyyy')
               return <option key={key} value={key}>{label}</option>
             })}
           </select>
-          <Button variant="outline" size="sm" onClick={() => loadData(month)} className="ml-2">Aplicar</Button>
-          <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); loadData(m); }} className="ml-2">Restablecer</Button>
+          <label className="text-sm">Comparar con</label>
+          <select
+            value={compareYear}
+            onChange={(e) => { const cy = e.target.value; setCompareYear(cy); loadData(year, cy) }}
+            className="rounded px-2 py-1"
+            style={{
+              backgroundColor: 'hsl(var(--color-popover))',
+              color: 'hsl(var(--color-popover-foreground))',
+              borderColor: 'hsl(var(--color-border))',
+            }}
+          >
+            <option value="">Ninguno</option>
+            {Array.from({ length: 5 }).map((_, i) => {
+              const d = subYears(new Date(), i)
+              const key = format(d, 'yyyy')
+              const label = format(d, 'yyyy')
+              return <option key={key} value={key}>{label}</option>
+            })}
+          </select>
           {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
           {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
         </div>
@@ -103,6 +148,7 @@ export function RevenueChart() {
               shared={true}
             />
             <Bar dataKey="revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} activeBar={{ stroke: 'hsl(var(--chart-2))', strokeWidth: 3 }} />
+            {compareYear && <Bar dataKey="revenue_prev" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} activeBar={{ stroke: 'hsl(var(--chart-3))', strokeWidth: 3 }} />}
           </BarChart>
         </ChartContainer>
       </CardContent>

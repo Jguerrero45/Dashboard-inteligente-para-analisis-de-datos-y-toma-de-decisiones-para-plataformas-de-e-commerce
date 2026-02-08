@@ -27,12 +27,15 @@ export function TopProductsChart() {
     const params = new URLSearchParams({ limit: '5', sort: s ?? sortBy })
     if (y) params.set('year', y)
     const API_BASE = getApiBase()
-    fetch(`${API_BASE}/metrics/top-products/?` + params.toString())
-      .then((r) => r.json())
-      .then((json) => {
-        if (mounted && Array.isArray(json)) setTopProductsData(json)
+    const fetchCurrent = fetch(`${API_BASE}/metrics/top-products/?` + params.toString()).then(r => r.json())
+    Promise.all([fetchCurrent])
+      .then(([currentData]) => {
+        if (!mounted) return
+        if (Array.isArray(currentData)) {
+          setTopProductsData(currentData)
+        }
       })
-      .catch((err) => { setError(String(err)) })
+      .catch((err) => { if (mounted) setError(String(err)) })
       .finally(() => { if (mounted) setLoading(false) })
     return () => { mounted = false }
   }
@@ -54,9 +57,6 @@ export function TopProductsChart() {
     loadData(y, sortBy)
   }
 
-  const applyYear = () => loadData(year, sortBy)
-  const resetYear = () => { const y = format(new Date(), 'yyyy'); setYear(y); loadData(y, sortBy) }
-
   // Usar valores crudos desde el backend y delegar formateo a `formatPrice`
   const chartData = topProductsData.map((p) => ({ ...p }))
   const onMove = useCallback((_e: any) => {
@@ -69,11 +69,11 @@ export function TopProductsChart() {
         <div className="flex items-start justify-between w-full">
           <div>
             <CardTitle>Productos Más Vendidos</CardTitle>
-            <CardDescription>Top 5 productos por ingresos generados</CardDescription>
+            <CardDescription>Top 5 productos más vendidos en el año seleccionado</CardDescription>
           </div>
           <div className="flex items-center gap-3">
             <ChartInfo title="Productos Más Vendidos">
-              <p className="text-sm">Lista de los productos que generaron más ingresos en el periodo seleccionado.</p>
+              <p className="text-sm">Lista de los top 5 productos más vendidos en el periodo seleccionado.</p>
             </ChartInfo>
             <div className="flex items-center gap-2">
               <label className="text-sm">Año</label>
@@ -92,8 +92,6 @@ export function TopProductsChart() {
                   return <option key={y} value={y}>{y}</option>
                 })}
               </select>
-              <Button variant="outline" size="sm" onClick={applyYear}>Aplicar</Button>
-              <Button variant="outline" size="sm" onClick={resetYear}>Restablecer</Button>
               {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
               {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
             </div>
@@ -131,7 +129,7 @@ export function TopProductsChart() {
               <Tooltip
                 data={chartData}
                 content={renderTooltipWithoutRange}
-                formatter={(value: number) => formatPrice(value)}
+                formatter={(value: number) => sortBy === 'revenue' ? formatPrice(value) : value}
                 wrapperStyle={{ background: 'var(--color-background)', color: 'var(--color-foreground)', opacity: 1 }}
                 defaultIndex={0}
                 shared={false}

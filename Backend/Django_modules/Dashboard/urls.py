@@ -27,6 +27,8 @@ urlpatterns = [
     # Endpoints para métricas del dashboard
     path('metrics/sales-monthly/',
          views.SalesMonthlyView.as_view(), name='sales-monthly'),
+    path('metrics/sales-yearly/',
+         views.SalesYearlyView.as_view(), name='sales-yearly'),
     path('metrics/revenue-by-category/',
          views.RevenueByCategoryView.as_view(), name='revenue-by-category'),
     path('metrics/top-products/',

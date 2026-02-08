@@ -25,50 +25,39 @@ admin.site.register(Ventas)
 admin.site.register(VentaItem)
 
 
-# Intentar reemplazar el admin del User para ocultar "Fechas importantes" y "Groups"
+# Desregistrar User para reemplazarlo
 try:
     admin.site.unregister(User)
 except Exception:
     pass
 
 
-class CustomUserAdmin(BaseUserAdmin):
-    # Mantener filter_horizontal sin 'groups' para evitar render del chooser
-    # Quitar 'groups' y 'user_permissions' del widget horizontal del UserAdmin
-    filter_horizontal = tuple(f for f in getattr(
-        BaseUserAdmin, 'filter_horizontal', ()) if f not in ('groups', 'user_permissions'))
+class DashboardUserAdmin(BaseUserAdmin):
+    filter_horizontal = ('user_permissions',)
+
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('username', 'password1', 'password2'),
+        }),
+    )
 
     def get_fieldsets(self, request, obj=None):
-        """Devuelve fieldsets filtrados por petición.
-
-        - Oculta bloques que contienen `last_login` o `date_joined`.
-        - Oculta `user_permissions` para editores que no son superuser.
-        - Mantiene `groups` en el formulario (se puede dejar como solo lectura para no-superusers).
-        """
+        """Ocultar campos no deseados en edición: user_permissions, last_login, date_joined."""
+        if not obj:  # Si es creación, usar add_fieldsets
+            return self.add_fieldsets
         new_fieldsets = []
-        # copiar, pero filtrar
         for name, opts in getattr(BaseUserAdmin, 'fieldsets', ()):
             fields = list(opts.get('fields', ()))
-            # eliminar campos de fechas importantes por completo
-            if 'last_login' in fields or 'date_joined' in fields:
-                continue
-            # No mostrar user_permissions en el formulario de usuario en absoluto
-            if 'user_permissions' in fields:
-                fields = [f for f in fields if f != 'user_permissions']
-            new_fieldsets.append((name, dict(opts, fields=tuple(fields))))
+            # Ocultar campos no deseados
+            fields = [f for f in fields if f not in (
+                'user_permissions', 'last_login', 'date_joined')]
+            if fields:  # Solo agregar si hay campos
+                new_fieldsets.append((name, dict(opts, fields=tuple(fields))))
         return tuple(new_fieldsets)
 
-    def get_readonly_fields(self, request, obj=None):
-        """Hacer `groups` solo lectura para editores que no sean superuser."""
-        base = tuple(getattr(BaseUserAdmin, 'readonly_fields', ()))
-        if not (getattr(request, 'user', None) and getattr(request.user, 'is_superuser', False)):
-            return tuple(list(base) + ['groups'])
-        return base
 
-    # No limitamos aquí `user_permissions`; lo ocultamos desde `get_fieldsets`.
-
-
-admin.site.register(User, CustomUserAdmin)
+# admin.site.register(User, CustomUserAdmin)
 
 
 class GroupAdminForm(forms.ModelForm):
@@ -113,9 +102,4 @@ class GroupAdmin(admin.ModelAdmin):
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
-try:
-    admin.site.unregister(Group)
-except Exception:
-    pass
-
-admin.site.register(Group, GroupAdmin)
+admin.site.register(User, DashboardUserAdmin)

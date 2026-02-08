@@ -9,88 +9,78 @@ import { useCallback } from "react"
 import { getApiBase } from "@/lib/activeStore"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
-
-const getYear = (value?: string) => {
-    if (!value) return ""
-    const d = new Date(value)
-    if (!Number.isNaN(d.getTime())) return String(d.getFullYear())
-    const match = value.match(/(\d{4})/)
-    return match ? match[1] : ""
-}
-
-const buildYearSeries = (rows: any[], key: string, year: string) => {
-    const months = Array.from({ length: 12 }).map((_, i) => ({
-        label: format(new Date(Number(year), i, 1), 'MMM', { locale: es }),
-        iso: format(new Date(Number(year), i, 1), 'yyyy-MM'),
-    }))
-
-    const lookup = new Map<string, any>()
-    rows.forEach((r) => {
-        const iso = (r.month_iso || r.month || '').toString()
-        if (getYear(iso) === year) lookup.set(iso.slice(0, 7), r)
-    })
-
-    return months.map((m) => {
-        const hit = lookup.get(m.iso)
-        return {
-            month: m.label,
-            [key]: hit ? Number(hit[key] ?? hit.sales_count ?? 0) : 0,
-        }
-    })
-}
 
 export function OrdersChart() {
     const [data, setData] = useState<any[]>([])
     const [year, setYear] = useState<string>(format(new Date(), 'yyyy'))
+    const [compareYear, setCompareYear] = useState<string>("")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const loadData = (y?: string) => {
+    const loadData = async (y?: string, compYear?: string) => {
         setLoading(true)
         setError(null)
         let mounted = true
         const API_BASE = getApiBase()
-        const params = new URLSearchParams({ months: '12' })
+        const params = new URLSearchParams()
         if (y) params.set('year', y)
-        fetch(`${API_BASE}/metrics/sales-monthly/?` + params.toString())
-            .then((r) => r.json())
-            .then((json) => {
-                if (!mounted) return
-                if (Array.isArray(json)) {
-                    const mapped = json.map((it: any) => ({ month: it.month_iso || it.month, month_label: it.month_label || it.month, orders: Number(it.sales_count ?? 0) }))
-                    setData(mapped)
-                } else {
-                    setData([])
-                }
-            })
-            .catch((err) => { setError(String(err)) })
-            .finally(() => { if (mounted) setLoading(false) })
+        const fetchCurrent = fetch(`${API_BASE}/metrics/sales-monthly/?` + params.toString()).then(r => r.json())
+        let fetchPrev: Promise<any> | null = null
+        if (compYear) {
+            const paramsPrev = new URLSearchParams()
+            paramsPrev.set('year', compYear)
+            fetchPrev = fetch(`${API_BASE}/metrics/sales-monthly/?` + paramsPrev.toString()).then(r => r.json())
+        }
+        try {
+            const [currentData, prevData] = await Promise.all([fetchCurrent, fetchPrev || Promise.resolve(null)])
+            if (!mounted) return
+            let mapped = []
+            if (Array.isArray(currentData)) {
+                mapped = currentData.map((it: any) => {
+                    const orders = Number(it.sales_count ?? it.sales ?? 0)
+                    let ordersPrev = 0
+                    if (prevData && Array.isArray(prevData)) {
+                        const prevItem = prevData.find((p: any) => p.month_label === it.month_label)
+                        if (prevItem) ordersPrev = Number(prevItem.sales_count ?? prevItem.sales ?? 0)
+                    }
+                    return {
+                        month: it.month_label,
+                        orders: orders,
+                        orders_prev: ordersPrev,
+                    }
+                })
+            }
+            setData(mapped)
+        } catch (err) {
+            if (mounted) setError(String(err))
+        } finally {
+            if (mounted) setLoading(false)
+        }
         return () => { mounted = false }
     }
 
     useEffect(() => {
-        loadData(year)
+        loadData(year, compareYear)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    const chartConfig = { orders: { label: 'Pedidos', color: 'hsl(var(--chart-3))' } }
+    const chartConfig = { orders: { label: 'Cantidad de Pedidos', color: 'hsl(var(--chart-3))' }, orders_prev: { label: 'Cantidad Pedidos Año Anterior', color: 'hsl(var(--chart-4))' } }
     const onMove = useCallback((_e: any) => {
         // placeholder for tooltip interaction
     }, [])
 
-    const displayData = buildYearSeries(data, 'orders', year)
+    const displayData = data
 
     return (
         <Card>
             <CardHeader>
                 <div className="flex items-start justify-between w-full">
                     <div>
-                        <CardTitle>Pedidos Mensuales</CardTitle>
-                        <CardDescription>Cantidad de pedidos (ventas completadas) por mes</CardDescription>
+                        <CardTitle>Cantidad de Pedidos Anuales</CardTitle>
+                        <CardDescription>Cantidad total de pedidos (ventas completadas y pendientes) en el año seleccionado</CardDescription>
                     </div>
-                    <ChartInfo title="Pedidos Mensuales">
-                        <p className="text-sm">Cuenta de ventas con estado completada por mes. Útil para evaluar volumen de transacciones efectivas.</p>
+                    <ChartInfo title="Pedidos Anuales">
+                        <p className="text-sm">Cantidad total de pedidos (ventas completadas y pendientes) por mes en el año seleccionado. Útil para evaluar el volumen de transacciones.</p>
                     </ChartInfo>
                 </div>
             </CardHeader>
@@ -99,7 +89,7 @@ export function OrdersChart() {
                     <label className="text-sm">Año</label>
                     <select
                         value={year}
-                        onChange={(e) => { const y = e.target.value; setYear(y); loadData(y) }}
+                        onChange={(e) => { const y = e.target.value; setYear(y); loadData(y, compareYear) }}
                         className="rounded px-2 py-1"
                         style={{
                             backgroundColor: 'hsl(var(--color-popover))',
@@ -112,8 +102,23 @@ export function OrdersChart() {
                             return <option key={y} value={y}>{y}</option>
                         })}
                     </select>
-                    <Button variant="outline" size="sm" onClick={() => loadData(year)} className="ml-2">Aplicar</Button>
-                    <Button variant="outline" size="sm" onClick={() => { const y = format(new Date(), 'yyyy'); setYear(y); loadData(y); }} className="ml-2">Restablecer</Button>
+                    <label className="text-sm">Comparar con</label>
+                    <select
+                        value={compareYear}
+                        onChange={(e) => { const cy = e.target.value; setCompareYear(cy); loadData(year, cy) }}
+                        className="rounded px-2 py-1"
+                        style={{
+                            backgroundColor: 'hsl(var(--color-popover))',
+                            color: 'hsl(var(--color-popover-foreground))',
+                            borderColor: 'hsl(var(--color-border))',
+                        }}
+                    >
+                        <option value="">Ninguno</option>
+                        {Array.from({ length: 5 }).map((_, i) => {
+                            const y = String(Number(format(new Date(), 'yyyy')) - i)
+                            return <option key={y} value={y}>{y}</option>
+                        })}
+                    </select>
                     {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
                     {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
                 </div>
@@ -123,7 +128,8 @@ export function OrdersChart() {
                         <XAxis dataKey="month" className="text-xs" />
                         <YAxis className="text-xs" />
                         <Tooltip data={displayData} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, displayData.length - 1)} shared={true} />
-                        <Line type="monotone" dataKey="orders" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6, stroke: 'hsl(var(--chart-3))', strokeWidth: 2, fill: 'white' }} />
+                        <Line type="monotone" dataKey="orders" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6, stroke: 'hsl(var(--chart-3))', strokeWidth: 2, fill: 'white' }} name="Valor de Pedidos" />
+                        {compareYear && <Line type="monotone" dataKey="orders_prev" stroke="hsl(var(--chart-4))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6, stroke: 'hsl(var(--chart-4))', strokeWidth: 2, fill: 'white' }} name="Valor Pedidos Año Anterior" />}
                     </LineChart>
                 </ChartContainer>
             </CardContent>

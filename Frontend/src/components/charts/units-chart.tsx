@@ -14,12 +14,12 @@ export function UnitsChart() {
     useEffect(() => {
         let mounted = true
         const API_BASE = getApiBase()
-        fetch(`${API_BASE}/metrics/sales-monthly/?months=12`)
+        fetch(`${API_BASE}/metrics/sales-yearly/?years=5`)
             .then((r) => r.json())
             .then((json) => {
                 if (!mounted) return
                 if (Array.isArray(json)) {
-                    const mapped = json.map((it: any) => ({ month: it.month_label || it.month, units: Number(it.items_units ?? 0) }))
+                    const mapped = json.map((it: any) => ({ year: it.year, units: Number(it.items_units ?? 0) }))
                     setData(mapped)
                 }
             })
@@ -37,8 +37,8 @@ export function UnitsChart() {
             <CardHeader>
                 <div className="flex items-start justify-between w-full">
                     <div>
-                        <CardTitle>Unidades Vendidas Mensuales</CardTitle>
-                        <CardDescription>Total de unidades vendidas por mes</CardDescription>
+                        <CardTitle>Unidades Vendidas Anuales</CardTitle>
+                        <CardDescription>Total de unidades vendidas por año</CardDescription>
                     </div>
                     <ChartInfo title="Unidades Vendidas">
                         <p className="text-sm">Mide el volumen de productos vendidos mensualmente (suma de cantidades).</p>
@@ -55,7 +55,7 @@ export function UnitsChart() {
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="month" className="text-xs" />
+                        <XAxis dataKey="year" className="text-xs" />
                         <YAxis className="text-xs" />
                         <Tooltip
                             data={data}
