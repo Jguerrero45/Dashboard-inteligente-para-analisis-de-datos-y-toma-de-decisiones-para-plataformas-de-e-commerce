@@ -17,6 +17,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/api2': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api3': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })

@@ -12,12 +12,14 @@ import { useCurrency } from "@/hooks/use-currency"
 import { format } from "date-fns"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
+import { getApiBase } from "@/lib/activeStore"
 
 // Estado local: será llenado desde la API
 const clientesData: Array<any> = []
 
 export default function ClientesPage() {
     const { formatPrice } = useCurrency()
+    const API_BASE = getApiBase()
     const [searchTerm, setSearchTerm] = useState("")
     const [segmentoFilter, setSegmentoFilter] = useState("todos")
     const [estadoFilter, setEstadoFilter] = useState("todos")
@@ -27,7 +29,7 @@ export default function ClientesPage() {
 
     useEffect(() => {
         setLoading(true)
-        fetch('/api/Clientes/')
+        fetch(`${API_BASE}/Clientes/`)
             .then(async (res) => {
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}))

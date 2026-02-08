@@ -3,13 +3,15 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { getApiBase } from "@/lib/activeStore"
+import { fetchJson } from "@/lib/fetch-json"
 import { useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 import { Button } from "@/components/ui/button"
-import { format, subYears } from "date-fns"
+import { format } from "date-fns"
+import { getYearOptions } from "@/lib/plan-years"
 
 interface CategoryMargin {
     categoria: string
@@ -26,6 +28,8 @@ export function MarginByCategoryChart() {
     const [year, setYear] = useState<string>(format(new Date(), 'yyyy'))
     const [compareYear, setCompareYear] = useState<string>("")
     const [error, setError] = useState<string | null>(null)
+    const [message, setMessage] = useState<string | null>(null)
+    const isStoreC = getApiBase() === '/api3'
 
     const load = async (y?: string, compYear?: string) => {
         setLoading(true)
@@ -35,12 +39,12 @@ export function MarginByCategoryChart() {
             const API_BASE = getApiBase()
             const params = new URLSearchParams()
             if (y) params.set('year', y)
-            const fetchCurrent = fetch(`${API_BASE}/metrics/revenue-by-category/${params.toString() ? `?${params}` : ''}`).then(r => r.json())
+            const fetchCurrent = fetchJson<any[]>(`${API_BASE}/metrics/revenue-by-category/${params.toString() ? `?${params}` : ''}`, undefined, [])
             let fetchPrev: Promise<any> | null = null
             if (compYear) {
                 const paramsPrev = new URLSearchParams()
                 paramsPrev.set('year', compYear)
-                fetchPrev = fetch(`${API_BASE}/metrics/revenue-by-category/${paramsPrev.toString() ? `?${paramsPrev}` : ''}`).then(r => r.json())
+                fetchPrev = fetchJson<any[]>(`${API_BASE}/metrics/revenue-by-category/${paramsPrev.toString() ? `?${paramsPrev}` : ''}`, undefined, [])
             }
             const [currentData, prevData] = await Promise.all([fetchCurrent, fetchPrev || Promise.resolve(null)])
             if (!mounted) return
@@ -62,6 +66,8 @@ export function MarginByCategoryChart() {
                 }
             })
             setData(mapped)
+            const currentYear = y || year
+            setMessage(isStoreC && ['2022', '2023', '2024'].includes(currentYear) ? "Datos simulados para el plan de trabajo" : null)
         } catch (err: any) {
             if (mounted) {
                 setData([])
@@ -76,7 +82,7 @@ export function MarginByCategoryChart() {
     useEffect(() => {
         load(year, compareYear)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [year, compareYear])
 
     const sorted = useMemo(() => [...data].sort((a, b) => b.marginPct - a.marginPct), [data])
     const onMove = useCallback((_e: any) => {
@@ -114,12 +120,9 @@ export function MarginByCategoryChart() {
                             borderColor: 'hsl(var(--color-border))',
                         }}
                     >
-                        {Array.from({ length: 5 }).map((_, i) => {
-                            const d = subYears(new Date(), i)
-                            const key = format(d, 'yyyy')
-                            const label = format(d, 'yyyy')
-                            return <option key={key} value={key}>{label}</option>
-                        })}
+                        {getYearOptions(isStoreC).map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                     </select>
                     <label className="text-sm">Comparar con</label>
                     <select
@@ -133,15 +136,13 @@ export function MarginByCategoryChart() {
                         }}
                     >
                         <option value="">Ninguno</option>
-                        {Array.from({ length: 5 }).map((_, i) => {
-                            const d = subYears(new Date(), i)
-                            const key = format(d, 'yyyy')
-                            const label = format(d, 'yyyy')
-                            return <option key={key} value={key}>{label}</option>
-                        })}
+                        {getYearOptions(isStoreC).map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                     </select>
                     {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
                     {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+                    {message && <p className="ml-2 text-sm text-blue-600">{message}</p>}
                 </div>
                 <ChartContainer config={chartConfig} className="h-[320px] w-full">
                     <ResponsiveContainer width="100%" height="100%">

@@ -200,6 +200,8 @@ export default function StoreSettings() {
                 } else {
                     alert('Se quitó la tienda activa')
                 }
+                // recargar página para aplicar cambios
+                window.location.reload()
             }
         } catch (e) {
             console.error(e)
@@ -222,7 +224,7 @@ export default function StoreSettings() {
                         <label className="text-xs">Nombre</label>
                         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Mi Tienda 1" />
                         <label className="text-xs mt-2">API URL</label>
-                        <Input value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="https://tienda.example.com/api" />
+                        <Input value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="http://localhost:8000/api2" />
                         <div className="flex justify-end gap-2 mt-2">
                             <Button onClick={handleCreate} variant="secondary" disabled={loading}>{loading ? '...' : 'Agregar'}</Button>
                         </div>

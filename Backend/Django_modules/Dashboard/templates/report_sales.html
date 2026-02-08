@@ -17,10 +17,7 @@
     }
 
     .rotated {
-      transform: rotate(90deg) translateY(-100%);
-      transform-origin: top left;
-      width: 100vh;
-      height: 100vw;
+      /* Removed rotation for portrait layout */
     }
 
     table {
@@ -46,7 +43,7 @@
 </head>
 
 <body>
-  <div class="rotated">
+  <div>
     <div class="meta">
       <h2>Reporte de Ventas</h2>
       <div>Generado: {{ now }}</div>

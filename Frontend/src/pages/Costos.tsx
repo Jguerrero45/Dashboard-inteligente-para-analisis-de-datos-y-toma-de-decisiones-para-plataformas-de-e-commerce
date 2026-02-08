@@ -10,9 +10,11 @@ import { Download, Upload, Search, Pencil, AlertCircle, Check, X } from "lucide-
 import { useCurrency } from "@/hooks/use-currency"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
+import { getApiBase } from "@/lib/activeStore"
 
 export default function Costos() {
     const { formatPrice } = useCurrency()
+    const API_BASE = getApiBase()
     const navigate = useNavigate()
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined
@@ -39,7 +41,7 @@ export default function Costos() {
         setLoading(true)
         setError(null)
         try {
-            const res = await fetch('/api/Productos/')
+            const res = await fetch(`${API_BASE}/Productos/`)
             if (!res.ok) {
                 const d = await res.json().catch(() => ({}))
                 throw new Error(d.detail || 'Error al cargar productos')
@@ -80,7 +82,7 @@ export default function Costos() {
         try {
             const fd = new FormData()
             fd.append('file', file)
-            const res = await fetch('/api/productos/costos/importar/', { method: 'POST', body: fd, headers: authHeaders })
+            const res = await fetch(`${API_BASE}/productos/costos/importar/`, { method: 'POST', body: fd, headers: authHeaders })
             const data = await res.json().catch(() => ({}))
             if (!res.ok) {
                 throw new Error(data.detail || 'Error al importar costos')

@@ -6,8 +6,9 @@ import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components
 import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState, useCallback } from "react"
 import { getApiBase } from "@/lib/activeStore"
-import { Button } from "@/components/ui/button"
-import { format, subYears } from "date-fns"
+import { fetchJson } from "@/lib/fetch-json"
+import { format } from "date-fns"
+import { getYearOptions } from "@/lib/plan-years"
 
 export function RevenueChart() {
   const [data, setData] = useState<any[]>([])
@@ -15,6 +16,7 @@ export function RevenueChart() {
   const [compareYear, setCompareYear] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   const loadData = async (y?: string, compYear?: string) => {
     setLoading(true)
@@ -23,12 +25,12 @@ export function RevenueChart() {
     const API_BASE = getApiBase()
     const params = new URLSearchParams()
     if (y) params.set('year', y)
-    const fetchCurrent = fetch(`${API_BASE}/metrics/revenue-by-category/` + (params.toString() ? `?${params}` : '')).then(r => r.json())
+    const fetchCurrent = fetchJson<any[]>(`${API_BASE}/metrics/revenue-by-category/` + (params.toString() ? `?${params}` : ''), undefined, [])
     let fetchPrev: Promise<any> | null = null
     if (compYear) {
       const paramsPrev = new URLSearchParams()
       paramsPrev.set('year', compYear)
-      fetchPrev = fetch(`${API_BASE}/metrics/revenue-by-category/` + (paramsPrev.toString() ? `?${paramsPrev}` : '')).then(r => r.json())
+      fetchPrev = fetchJson<any[]>(`${API_BASE}/metrics/revenue-by-category/` + (paramsPrev.toString() ? `?${paramsPrev}` : ''), undefined, [])
     }
     try {
       const [currentData, prevData] = await Promise.all([fetchCurrent, fetchPrev || Promise.resolve(null)])
@@ -48,6 +50,9 @@ export function RevenueChart() {
         } else {
           setData([])
         }
+        const isStoreC = getApiBase() === '/api3'
+        const currentYear = y || year
+        setMessage(isStoreC && ['2022', '2023', '2024'].includes(currentYear) ? "Datos simulados para el plan de trabajo" : null)
       }
     } catch (err) {
       if (mounted) setError(String(err))
@@ -60,7 +65,7 @@ export function RevenueChart() {
   useEffect(() => {
     loadData(year, compareYear)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [year, compareYear])
 
   // Mantener valores crudos (USD) y delegar formateo/conversión a `formatPrice`
   const chartData = data.map((item) => ({ ...item }))
@@ -105,17 +110,14 @@ export function RevenueChart() {
               borderColor: 'hsl(var(--color-border))',
             }}
           >
-            {Array.from({ length: 5 }).map((_, i) => {
-              const d = subYears(new Date(), i)
-              const key = format(d, 'yyyy')
-              const label = format(d, 'yyyy')
-              return <option key={key} value={key}>{label}</option>
-            })}
+            {getYearOptions(getApiBase() === '/api3').map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
           </select>
           <label className="text-sm">Comparar con</label>
           <select
             value={compareYear}
-            onChange={(e) => { const cy = e.target.value; setCompareYear(cy); loadData(year, cy) }}
+            onChange={(e) => { const cy = e.target.value; setCompareYear(cy) }}
             className="rounded px-2 py-1"
             style={{
               backgroundColor: 'hsl(var(--color-popover))',
@@ -124,16 +126,14 @@ export function RevenueChart() {
             }}
           >
             <option value="">Ninguno</option>
-            {Array.from({ length: 5 }).map((_, i) => {
-              const d = subYears(new Date(), i)
-              const key = format(d, 'yyyy')
-              const label = format(d, 'yyyy')
-              return <option key={key} value={key}>{label}</option>
-            })}
+            {getYearOptions(getApiBase() === '/api3').map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
           </select>
           {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
           {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
         </div>
+        {message && <div className="text-sm text-blue-600 mb-2">{message}</div>}
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <BarChart data={chartData} onMouseMove={onMove} onMouseLeave={() => { }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />

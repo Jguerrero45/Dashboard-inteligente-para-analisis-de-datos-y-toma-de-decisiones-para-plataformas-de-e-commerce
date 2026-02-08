@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react"
 import { getApiBase } from "@/lib/activeStore"
+import { fetchJson } from "@/lib/fetch-json"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 import { Button } from "@/components/ui/button"
-import { format, subYears } from "date-fns"
+import { format } from "date-fns"
+import { getYearOptions } from "@/lib/plan-years"
 
 
 interface CategoryValue {
@@ -22,6 +24,8 @@ export function CategoryPerformanceRadar() {
     const [loading, setLoading] = useState(true)
     const [year, setYear] = useState<string>(format(new Date(), 'yyyy'))
     const [error, setError] = useState<string | null>(null)
+    const [message, setMessage] = useState<string | null>(null)
+    const isStoreC = getApiBase() === '/api3'
 
     const load = async (y?: string) => {
         setLoading(true)
@@ -31,9 +35,7 @@ export function CategoryPerformanceRadar() {
             const API_BASE = getApiBase()
             const params = new URLSearchParams()
             if (y) params.set('year', y)
-            const res = await fetch(`${API_BASE}/metrics/revenue-by-category/?days=30${params.toString() ? `&${params}` : ''}`)
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            const json = await res.json()
+            const json = await fetchJson<any[]>(`${API_BASE}/metrics/revenue-by-category/?days=30${params.toString() ? `&${params}` : ''}`, undefined, [])
             if (!mounted) return
             const items = Array.isArray(json) ? json : []
             const mapped = items.map((it: any) => ({
@@ -42,6 +44,8 @@ export function CategoryPerformanceRadar() {
                 cost: Number(it.cost) || 0,
             }))
             setData(mapped)
+            const currentYear = y || year
+            setMessage(isStoreC && ['2022', '2023', '2024'].includes(currentYear) ? "Datos simulados para el plan de trabajo" : null)
         } catch (err: any) {
             if (mounted) {
                 setData([])
@@ -56,7 +60,7 @@ export function CategoryPerformanceRadar() {
     useEffect(() => {
         load(year)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [year])
 
     const radarData = useMemo(() => (data.length ? data : [{ category: "Sin datos", revenue: 0, cost: 0 }]), [data])
     const onMove = useCallback((_e: any) => {
@@ -89,17 +93,15 @@ export function CategoryPerformanceRadar() {
                             borderColor: 'hsl(var(--color-border))',
                         }}
                     >
-                        {Array.from({ length: 5 }).map((_, i) => {
-                            const d = subYears(new Date(), i)
-                            const key = format(d, 'yyyy')
-                            const label = format(d, 'yyyy')
-                            return <option key={key} value={key}>{label}</option>
-                        })}
+                        {getYearOptions(isStoreC).map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                     </select>
                     <Button variant="outline" size="sm" onClick={() => load(year)}>Aplicar</Button>
                     <Button variant="outline" size="sm" onClick={() => { const y = format(new Date(), 'yyyy'); setYear(y); load(y); }}>Restablecer</Button>
                     {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
                     {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+                    {message && <p className="ml-2 text-sm text-blue-600">{message}</p>}
                 </div>
                 <ChartContainer
                     config={{

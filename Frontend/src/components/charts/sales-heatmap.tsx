@@ -8,6 +8,7 @@ import { useCurrency } from "@/hooks/use-currency"
 import { format, subMonths } from 'date-fns'
 import { es } from "date-fns/locale"
 import { getApiBase } from "@/lib/activeStore"
+import { fetchJson } from "@/lib/fetch-json"
 
 const daysOfWeek = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
@@ -34,6 +35,8 @@ export function SalesHeatmap() {
   const [revenueRaw, setRevenueRaw] = useState<number[][]>(defaultDayNums)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const isStoreC = getApiBase() === '/api3'
 
   const loadHeatmap = (m?: string) => {
     setLoading(true)
@@ -42,11 +45,7 @@ export function SalesHeatmap() {
     const params = new URLSearchParams()
     if (m) params.set('month', m)
     const API_BASE = getApiBase()
-    fetch(`${API_BASE}/metrics/sales-heatmap/?` + params.toString())
-      .then((r) => {
-        if (!r.ok) throw new Error('Error fetching heatmap')
-        return r.json()
-      })
+    fetchJson<any>(`${API_BASE}/metrics/sales-heatmap/?` + params.toString(), undefined, { heatmap: defaultHeatmap, day_numbers: defaultDayNums, revenue_raw: defaultDayNums })
       .then((json) => {
         if (!mounted) return
         if (json && Array.isArray(json.heatmap) && Array.isArray(json.day_numbers)) {
@@ -57,10 +56,13 @@ export function SalesHeatmap() {
           } else {
             setRevenueRaw(defaultDayNums)
           }
+          const year = month.split('-')[0]
+          setMessage(isStoreC && ['2022', '2023', '2024'].includes(year) ? "Datos simulados para el plan de trabajo" : null)
         } else {
           setHeatmapData(defaultHeatmap)
           setDayNumbers(defaultDayNums)
           setRevenueRaw(defaultDayNums)
+          setMessage(null)
         }
       })
       .catch((err) => { setError(String(err)) })
@@ -72,7 +74,7 @@ export function SalesHeatmap() {
     // initial load with default month
     loadHeatmap(month)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [month])
 
   const { formatPrice } = useCurrency()
 
@@ -115,6 +117,7 @@ export function SalesHeatmap() {
             <Button variant="outline" size="sm" onClick={() => { const m = format(new Date(), 'yyyy-MM'); setMonth(m); loadHeatmap(m); }} className="ml-2">Restablecer</Button>
             {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
             {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+            {message && <p className="ml-2 text-sm text-blue-600">{message}</p>}
           </div>
 
           {/* Calendar header: weekdays */}

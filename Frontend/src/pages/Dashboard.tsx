@@ -15,6 +15,7 @@ import { OrdersChart } from "@/components/charts/orders-chart"
 import { ReturningCustomersCard } from "@/components/charts/returning-customers-card"
 import { MarginByCategoryChart } from "@/components/charts/margin-by-category-chart"
 import { CategoryPerformanceRadar } from "@/components/charts/category-performance-radar"
+import { getApiBase } from "@/lib/activeStore"
 
 type ExportSectionId =
   | "metrics"
@@ -52,6 +53,7 @@ export default function Dashboard() {
     EXPORT_SECTIONS.map((section) => section.id)
   )
   const embed = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "1"
+  const API_BASE = getApiBase()
 
   const handleExport = async (format: "png" | "pdf") => {
     const node = exportRef.current || dashboardRef.current
@@ -111,6 +113,7 @@ export default function Dashboard() {
             <p className="text-muted-foreground text-pretty">
               Análisis de datos y toma de decisiones para tu e-commerce.
             </p>
+            <div className="text-sm text-muted-foreground">API Base: {API_BASE}</div>
           </div>
           <div className="flex flex-col gap-3 sm:items-end">
             <button

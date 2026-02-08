@@ -7,8 +7,10 @@ import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState } from "react"
 import { useCallback } from "react"
 import { getApiBase } from "@/lib/activeStore"
+import { fetchJson } from "@/lib/fetch-json"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
+import { getYearOptions } from "@/lib/plan-years"
 
 export function OrdersChart() {
     const [data, setData] = useState<any[]>([])
@@ -16,6 +18,8 @@ export function OrdersChart() {
     const [compareYear, setCompareYear] = useState<string>("")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [message, setMessage] = useState<string | null>(null)
+    const isStoreC = getApiBase() === '/api3'
 
     const loadData = async (y?: string, compYear?: string) => {
         setLoading(true)
@@ -24,12 +28,12 @@ export function OrdersChart() {
         const API_BASE = getApiBase()
         const params = new URLSearchParams()
         if (y) params.set('year', y)
-        const fetchCurrent = fetch(`${API_BASE}/metrics/sales-monthly/?` + params.toString()).then(r => r.json())
+        const fetchCurrent = fetchJson<any[]>(`${API_BASE}/metrics/sales-monthly/?` + params.toString(), undefined, [])
         let fetchPrev: Promise<any> | null = null
         if (compYear) {
             const paramsPrev = new URLSearchParams()
             paramsPrev.set('year', compYear)
-            fetchPrev = fetch(`${API_BASE}/metrics/sales-monthly/?` + paramsPrev.toString()).then(r => r.json())
+            fetchPrev = fetchJson<any[]>(`${API_BASE}/metrics/sales-monthly/?` + paramsPrev.toString(), undefined, [])
         }
         try {
             const [currentData, prevData] = await Promise.all([fetchCurrent, fetchPrev || Promise.resolve(null)])
@@ -51,6 +55,8 @@ export function OrdersChart() {
                 })
             }
             setData(mapped)
+            const currentYear = y || year
+            setMessage(isStoreC && ['2022', '2023', '2024'].includes(currentYear) ? "Datos simulados para el plan de trabajo" : null)
         } catch (err) {
             if (mounted) setError(String(err))
         } finally {
@@ -62,7 +68,7 @@ export function OrdersChart() {
     useEffect(() => {
         loadData(year, compareYear)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [year, compareYear])
 
     const chartConfig = { orders: { label: 'Cantidad de Pedidos', color: 'hsl(var(--chart-3))' }, orders_prev: { label: 'Cantidad Pedidos Año Anterior', color: 'hsl(var(--chart-4))' } }
     const onMove = useCallback((_e: any) => {
@@ -97,10 +103,9 @@ export function OrdersChart() {
                             borderColor: 'hsl(var(--color-border))',
                         }}
                     >
-                        {Array.from({ length: 5 }).map((_, i) => {
-                            const y = String(Number(format(new Date(), 'yyyy')) - i)
-                            return <option key={y} value={y}>{y}</option>
-                        })}
+                        {getYearOptions(isStoreC).map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                     </select>
                     <label className="text-sm">Comparar con</label>
                     <select
@@ -114,13 +119,13 @@ export function OrdersChart() {
                         }}
                     >
                         <option value="">Ninguno</option>
-                        {Array.from({ length: 5 }).map((_, i) => {
-                            const y = String(Number(format(new Date(), 'yyyy')) - i)
-                            return <option key={y} value={y}>{y}</option>
-                        })}
+                        {getYearOptions(isStoreC).map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                     </select>
                     {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
                     {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+                    {message && <p className="ml-2 text-sm text-blue-600">{message}</p>}
                 </div>
                 <ChartContainer config={chartConfig} className="h-[300px] w-full">
                     <LineChart data={displayData} onMouseMove={onMove} onMouseLeave={() => { }}>

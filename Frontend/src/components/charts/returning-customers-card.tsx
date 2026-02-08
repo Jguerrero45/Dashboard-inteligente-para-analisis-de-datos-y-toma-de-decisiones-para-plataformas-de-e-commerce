@@ -1,13 +1,23 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { RadialBar, RadialBarChart, ResponsiveContainer, PolarAngleAxis } from "recharts"
 import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components/ui/chart"
 import ChartInfo from "@/components/ui/chart-info"
 
+import { getApiBase } from "@/lib/activeStore"
+import { getPlanLabel } from "@/lib/plan-years"
+
 export function ReturningCustomersCard() {
-    const rates = {
+    const isStoreC = getApiBase() === '/api3'
+    const rates = isStoreC ? {
+        '2022': 64, // simulated
+        '2023': 71, // simulated
+        '2024': 79, // simulated
+        '2025': 0,
+        '2026': 22,
+    } : {
         '2022': 76,
         '2023': 75,
         '2024': 81,
@@ -16,6 +26,11 @@ export function ReturningCustomersCard() {
     }
 
     const [selectedYear, setSelectedYear] = useState('2026')
+
+    const showPlanMessage = useMemo(() => {
+        if (!isStoreC) return false
+        return ['2022', '2023', '2024'].includes(selectedYear)
+    }, [isStoreC, selectedYear])
 
     const currentRate = rates[selectedYear as keyof typeof rates] || 0
     const chartData = [{ name: "Clientes que regresan", value: currentRate }]
@@ -47,7 +62,7 @@ export function ReturningCustomersCard() {
                             }}
                         >
                             {Object.keys(rates).map((year) => (
-                                <option key={year} value={year}>{year}</option>
+                                <option key={year} value={year}>{getPlanLabel(isStoreC, year)}</option>
                             ))}
                         </select>
                     </div>
@@ -75,8 +90,13 @@ export function ReturningCustomersCard() {
                 <div className="text-center space-y-1">
                     <div className="text-3xl font-bold">{currentRate}%</div>
                     <p className="text-muted-foreground text-sm">
-                        {selectedYear === '2026' ? '30% de clientes regresan en 2026 debido a que el año va comenzando.' : `${currentRate}% de clientes regresan en ${selectedYear}.`}
+                        {selectedYear === '2026'
+                            ? `${currentRate}% de clientes regresan en 2026 debido a que el año va comenzando.`
+                            : `${currentRate}% de clientes regresan en ${getPlanLabel(isStoreC, selectedYear)}.`}
                     </p>
+                    {showPlanMessage && (
+                        <p className="text-sm text-blue-600">Datos simulados para el plan de trabajo</p>
+                    )}
                 </div>
             </CardContent>
         </Card>

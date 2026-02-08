@@ -7,6 +7,7 @@ import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState } from "react"
 import { useCallback } from "react"
 import { getApiBase } from "@/lib/activeStore"
+import { fetchJson } from "@/lib/fetch-json"
 
 export function UnitsChart() {
     const [data, setData] = useState<any[]>([])
@@ -14,8 +15,7 @@ export function UnitsChart() {
     useEffect(() => {
         let mounted = true
         const API_BASE = getApiBase()
-        fetch(`${API_BASE}/metrics/sales-yearly/?years=5`)
-            .then((r) => r.json())
+        fetchJson<any[]>(`${API_BASE}/metrics/sales-yearly/?years=5`, undefined, [])
             .then((json) => {
                 if (!mounted) return
                 if (Array.isArray(json)) {

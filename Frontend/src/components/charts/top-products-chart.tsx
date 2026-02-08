@@ -7,8 +7,10 @@ import ChartInfo from "@/components/ui/chart-info"
 import { useCurrency } from "@/hooks/use-currency"
 import { useEffect, useState, useCallback } from "react"
 import { getApiBase } from "@/lib/activeStore"
+import { fetchJson } from "@/lib/fetch-json"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
+import { getYearOptions } from "@/lib/plan-years"
 
 // initial empty data; will be fetched from backend
 
@@ -19,6 +21,8 @@ export function TopProductsChart() {
   const [year, setYear] = useState<string>(format(new Date(), 'yyyy'))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const isStoreC = getApiBase() === '/api3'
 
   const loadData = (y?: string, s?: 'units' | 'revenue') => {
     setLoading(true)
@@ -27,12 +31,14 @@ export function TopProductsChart() {
     const params = new URLSearchParams({ limit: '5', sort: s ?? sortBy })
     if (y) params.set('year', y)
     const API_BASE = getApiBase()
-    const fetchCurrent = fetch(`${API_BASE}/metrics/top-products/?` + params.toString()).then(r => r.json())
+    const fetchCurrent = fetchJson<any[]>(`${API_BASE}/metrics/top-products/?` + params.toString(), undefined, [])
     Promise.all([fetchCurrent])
       .then(([currentData]) => {
         if (!mounted) return
         if (Array.isArray(currentData)) {
           setTopProductsData(currentData)
+          const currentYear = y || year
+          setMessage(isStoreC && ['2022', '2023', '2024'].includes(currentYear) ? "Datos simulados para el plan de trabajo" : null)
         }
       })
       .catch((err) => { if (mounted) setError(String(err)) })
@@ -87,13 +93,13 @@ export function TopProductsChart() {
                   borderColor: 'hsl(var(--color-border))',
                 }}
               >
-                {Array.from({ length: 5 }).map((_, i) => {
-                  const y = String(Number(format(new Date(), 'yyyy')) - i)
-                  return <option key={y} value={y}>{y}</option>
-                })}
+                {getYearOptions(isStoreC).map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
               {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
               {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+              {message && <p className="ml-2 text-sm text-blue-600">{message}</p>}
             </div>
             <select
               value={sortBy}

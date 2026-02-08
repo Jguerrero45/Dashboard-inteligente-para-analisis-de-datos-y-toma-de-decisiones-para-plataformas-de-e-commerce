@@ -83,6 +83,17 @@ MONTH_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May",
                    "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
 
+PLAN_YEAR_FACTORS = {
+    2024: 1.0,  # Plan de trabajo A
+    2023: 0.8,  # Plan de trabajo B
+    2022: 0.6,  # Plan de trabajo C
+}
+
+
+def _plan_factor(year: int) -> float:
+    return PLAN_YEAR_FACTORS.get(year, 1.0)
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     default_error_messages = {
         "no_active_account": "No se encontró una cuenta activa con las credenciales proporcionadas."
@@ -166,6 +177,13 @@ class StoreViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         store = serializer.save(owner=self.request.user)
+        # Ajustar api_url si es una tienda local (store_b, store_c)
+        name_lower = store.name.lower()
+        if 'store_b' in name_lower or 'b' == name_lower.strip():
+            store.api_url = 'http://localhost:8000/api2/'
+        elif 'store_c' in name_lower or 'c' == name_lower.strip():
+            store.api_url = 'http://localhost:8000/api3/'
+        store.save(update_fields=['api_url'])
         try:
             logging.getLogger(__name__).info(
                 f"Store created id={store.id} owner={getattr(self.request.user, 'username', None)} api_url={store.api_url}")
@@ -376,7 +394,8 @@ class ProductsGrowthView(APIView):
             it.get('revenue') or 0) for it in items_prev}
 
         rows = []
-        product_names = {it['producto__id']                         : it['producto__nombre'] for it in items_now}
+        product_names = {it['producto__id']
+            : it['producto__nombre'] for it in items_now}
         product_names.update(
             {it['producto__id']: it['producto__nombre'] for it in items_prev})
 
@@ -422,6 +441,48 @@ class RevenueByCategoryView(APIView):
 
         year_param = request.query_params.get('year')
         anchor_now = timezone.now()
+
+        # Check if store_c and year specified
+        is_store_c = request.path.startswith('/api3/')
+        if is_store_c and year_param:
+            try:
+                year = int(year_param)
+                if year in [2024, 2023, 2022]:
+                    # Simulated data for work plan (diferenciado por año)
+                    factor = _plan_factor(year)
+                    category_bump = {
+                        2024: [1.15, 0.95, 1.05, 1.0, 0.9],
+                        2023: [0.9, 1.1, 0.95, 1.05, 1.0],
+                        2022: [0.85, 0.9, 1.1, 0.95, 1.05],
+                    }
+                    bumps = category_bump.get(year, [1, 1, 1, 1, 1])
+                    base = [
+                        ('Electrónicos', 15000.0, 12000.0),
+                        ('Ropa', 12000.0, 8000.0),
+                        ('Hogar', 10000.0, 7000.0),
+                        ('Deportes', 8000.0, 6000.0),
+                        ('Libros', 5000.0, 3500.0),
+                    ]
+                    simulated_data = []
+                    for idx, (cat, rev, cost) in enumerate(base):
+                        revenue = rev * factor * bumps[idx]
+                        cost_val = cost * factor * (0.98 + (idx * 0.01))
+                        margin_pct = ((revenue - cost_val) /
+                                      revenue * 100) if revenue > 0 else 0.0
+                        simulated_data.append({
+                            'category': cat,
+                            'revenue': round(revenue, 2),
+                            'cost': round(cost_val, 2),
+                            'margin_pct': round(margin_pct, 1),
+                        })
+                    return Response(simulated_data)
+                elif year == 2025:
+                    # 2025 must be empty
+                    return Response([])
+                elif year != 2026:
+                    return Response([])
+            except Exception:
+                pass
 
         if year_param:
             try:
@@ -567,19 +628,56 @@ class QuantityByCategoryView(APIView):
 class TopProductsView(APIView):
     """Devuelve los productos top por ingresos y unidades vendidas.
 
-    Query params: ?limit=5
+    Query params: ?limit=5&sort=units&year=2024
     Response: [{ producto: 'Nombre', ventas: 1234.5, unidades: 20 }, ...]
     """
 
     def get(self, request):
         limit = int(request.query_params.get('limit', 5))
-        # Allow choosing sort order: by units sold ('units') or by revenue ('revenue')
         sort = request.query_params.get('sort', 'units')
-        # Group by producto id to avoid collisions on identical names
+        year_param = request.query_params.get('year')
+
+        if request.path.startswith('/api3/'):
+            if year_param and year_param not in ['2022', '2023', '2024', '2026']:
+                return Response([])
+            elif year_param in ['2022', '2023', '2024']:
+                # Simulated data for work plan (diferenciado por año)
+                year = int(year_param)
+                factor = _plan_factor(year)
+                unit_bumps = {
+                    2024: [1.2, 1.05, 0.95, 1.1, 0.9],
+                    2023: [0.95, 1.15, 1.05, 0.9, 1.0],
+                    2022: [0.9, 0.95, 1.1, 1.0, 1.05],
+                }
+                bumps = unit_bumps.get(year, [1, 1, 1, 1, 1])
+                base = [
+                    ('Producto Simulado A', 1500.0, 75),
+                    ('Producto Simulado B', 1200.0, 60),
+                    ('Producto Simulado C', 1000.0, 50),
+                    ('Producto Simulado D', 800.0, 40),
+                    ('Producto Simulado E', 600.0, 30),
+                ]
+                simulated_data = []
+                for idx, (name, ventas, unidades) in enumerate(base):
+                    units = int(round(unidades * factor * bumps[idx]))
+                    revenue = ventas * factor * (1.0 + (idx * 0.03))
+                    simulated_data.append({
+                        'producto': name,
+                        'ventas': round(revenue, 2),
+                        'unidades': units,
+                    })
+                return Response(simulated_data[:limit])
+            # For 2026, fall through to normal logic
+
         qs = (
             VentaItem.objects.select_related('producto', 'venta')
             .filter(venta__estado=Ventas.ESTADO_COMPLETADA)
-            .values(producto_pk=F('producto__id'), name=F('producto__nombre'))
+        )
+        if year_param:
+            qs = qs.filter(venta__fecha__year=year_param)
+        qs = (
+            qs.values(producto_pk=F('producto__id'),
+                      name=F('producto__nombre'))
             .annotate(ventas=Sum('precio_total'), unidades=Sum('cantidad'))
         )
         if sort == 'revenue':
@@ -660,6 +758,47 @@ class TopCustomersMonthlyView(APIView):
                 target_year = today.year
         else:
             target_year = None
+
+        if request.path.startswith('/api3/'):
+            if year_param and year_param not in ['2022', '2023', '2024', '2026']:
+                return Response({'months': [], 'months_iso': [], 'series': []})
+            elif year_param in ['2022', '2023', '2024']:
+                # Simulated data for work plan (diferenciado por año)
+                year = int(year_param)
+                factor = _plan_factor(year)
+                months_labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May',
+                                 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+                months_iso = [f"{year_param}-{m:02d}" for m in range(1, 13)]
+                base_series = [
+                    ('Cliente Simulado A', [
+                     5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 10500]),
+                    ('Cliente Simulado B', [
+                     4000, 4200, 4400, 4600, 4800, 5000, 5200, 5400, 5600, 5800, 6000, 6200]),
+                    ('Cliente Simulado C', [
+                     3000, 3100, 3200, 3300, 3400, 3500, 3600, 3700, 3800, 3900, 4000, 4100]),
+                    ('Cliente Simulado D', [
+                     2000, 2050, 2100, 2150, 2200, 2250, 2300, 2350, 2400, 2450, 2500, 2550]),
+                    ('Cliente Simulado E', [
+                     1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550]),
+                ]
+                bumps = {
+                    2024: [1.1, 1.0, 1.05, 0.95, 0.9],
+                    2023: [1.0, 1.08, 0.98, 1.02, 0.95],
+                    2022: [0.95, 0.92, 1.06, 1.0, 0.98],
+                }.get(year, [1, 1, 1, 1, 1])
+
+                series = []
+                for idx, (name, monthly) in enumerate(base_series, start=1):
+                    adj = [(v * factor * bumps[idx - 1]) for v in monthly]
+                    total = sum(adj)
+                    series.append({
+                        'cliente_id': idx,
+                        'cliente': name,
+                        'monthly': [round(v, 2) for v in adj],
+                        'total': round(total, 2),
+                    })
+                return Response({'months': months_labels, 'months_iso': months_iso, 'series': series})
+            # For 2026, fall through to normal logic
 
         months_list = []
         months_keys = []
@@ -748,6 +887,45 @@ class TopCategoriesMonthlyView(APIView):
         limit = int(request.query_params.get('limit', 6))
         year_param = request.query_params.get('year')
         today = timezone.now().date()
+
+        if request.path.startswith('/api3/'):
+            if year_param and year_param not in ['2022', '2023', '2024', '2026']:
+                return Response({'months': [], 'series': []})
+            elif year_param in ['2022', '2023', '2024']:
+                # Simulated data for work plan (diferenciado por año)
+                year = int(year_param)
+                factor = _plan_factor(year)
+                months_labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May',
+                                 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+                base_series = [
+                    ('Categoría A', [100, 120, 140, 160, 180,
+                     200, 220, 240, 260, 280, 300, 320]),
+                    ('Categoría B', [80, 90, 100, 110, 120,
+                     130, 140, 150, 160, 170, 180, 190]),
+                    ('Categoría C', [60, 70, 80, 90, 100,
+                     110, 120, 130, 140, 150, 160, 170]),
+                    ('Categoría D', [40, 50, 60, 70, 80,
+                     90, 100, 110, 120, 130, 140, 150]),
+                    ('Categoría E', [20, 30, 40, 50, 60,
+                     70, 80, 90, 100, 110, 120, 130]),
+                    ('Categoría F', [10, 20, 30, 40, 50,
+                     60, 70, 80, 90, 100, 110, 120]),
+                ]
+                bumps = {
+                    2024: [1.05, 0.95, 1.1, 0.9, 1.0, 0.85],
+                    2023: [0.95, 1.1, 0.9, 1.05, 0.88, 1.0],
+                    2022: [0.9, 0.92, 1.05, 1.0, 1.1, 0.95],
+                }.get(year, [1, 1, 1, 1, 1, 1])
+
+                series = []
+                for idx, (cat, monthly) in enumerate(base_series):
+                    adj = [int(round(v * factor * bumps[idx]))
+                           for v in monthly]
+                    total = sum(adj)
+                    series.append(
+                        {'category': cat, 'monthly': adj, 'total': int(total)})
+                return Response({'months': months_labels, 'series': series})
+            # For 2026, fall through to normal logic
 
         if year_param:
             try:
@@ -890,19 +1068,52 @@ class SalesHeatmapView(APIView):
             year_str, mon_str = month_param.split('-')
             year = int(year_str)
             mon = int(mon_str)
-            # compute start and end of month
-            start = datetime(year=year, month=mon, day=1)
-            if mon == 12:
-                next_month = datetime(year=year + 1, month=1, day=1)
-            else:
-                next_month = datetime(year=year, month=mon + 1, day=1)
-            # number of days in month
-            last_day = calendar.monthrange(year, mon)[1]
         except Exception:
             # invalid params -> return zeros (6 weeks x 7 days)
             heatmap = [[0 for _ in range(7)] for _ in range(6)]
             day_nums = [[0 for _ in range(7)] for _ in range(6)]
-            return Response({"heatmap": heatmap, "day_numbers": day_nums, "month": month_param or ""})
+            revenue_raw = [[0.0 for _ in range(7)] for _ in range(6)]
+            return Response({"heatmap": heatmap, "day_numbers": day_nums, "revenue_raw": revenue_raw, "month": month_param or ""})
+
+        if request.path.startswith('/api3/'):
+            if year not in [2022, 2023, 2024, 2026]:
+                heatmap = [[0 for _ in range(7)] for _ in range(6)]
+                day_nums = [[0 for _ in range(7)] for _ in range(6)]
+                revenue_raw = [[0.0 for _ in range(7)] for _ in range(6)]
+                return Response({"heatmap": heatmap, "day_numbers": day_nums, "revenue_raw": revenue_raw, "month": month_param})
+            elif year in [2022, 2023, 2024]:
+                # Simulated data for work plan (diferenciado por año)
+                # Compute weeks and day_nums as normal
+                start = datetime(year=year, month=mon, day=1)
+                last_day = calendar.monthrange(year, mon)[1]
+                first_wd = start.weekday()
+                weeks = (first_wd + last_day + 6) // 7
+                weeks = max(4, min(6, weeks))
+                day_nums = [[0 for _ in range(7)] for _ in range(weeks)]
+                for w in range(weeks):
+                    for wd in range(7):
+                        pos = w * 7 + wd
+                        day_num = pos - first_wd + 1
+                        if 1 <= day_num <= last_day:
+                            day_nums[w][wd] = day_num
+                factor = _plan_factor(year)
+                base_intensity = 50
+                intensity_bump = {2024: 1.15,
+                                  2023: 0.95, 2022: 0.8}.get(year, 1.0)
+                heatmap = [[int(base_intensity * intensity_bump) if day_nums[w][wd]
+                            else 0 for wd in range(7)] for w in range(weeks)]
+                revenue_raw = [[round(5000.0 * factor * intensity_bump, 2) if day_nums[w][wd]
+                                else 0.0 for wd in range(7)] for w in range(weeks)]
+                return Response({"heatmap": heatmap, "day_numbers": day_nums, "revenue_raw": revenue_raw, "month": month_param})
+            # For 2026, fall through to normal logic
+
+        # compute start and end of month
+        start = datetime(year=year, month=mon, day=1)
+        if mon == 12:
+            next_month = datetime(year=year + 1, month=1, day=1)
+        else:
+            next_month = datetime(year=year, month=mon + 1, day=1)
+        last_day = calendar.monthrange(year, mon)[1]
 
         # fetch completed sales in the month
         qs = Ventas.objects.filter(
@@ -1072,11 +1283,11 @@ class ExportMixin:
         for c in columns:
             if tipo == 'ventas' and c == 'productos':
                 headers.extend(
-                    [f'Producto {i}' for i in range(1, max_products + 1)])
+                    [f'P{i}' for i in range(1, max_products + 1)])
             elif tipo == 'ventas' and c.startswith('producto_'):
                 try:
                     idx = int(c.rsplit('_', 1)[1])
-                    headers.append(f'Producto {idx}')
+                    headers.append(f'P{idx}')
                 except Exception:
                     headers.append(c)
             else:
@@ -1286,7 +1497,7 @@ class ExportPDFView(View, ExportMixin):
             context = {
                 'headers': headers,
                 'rows': rows,
-                'now': datetime.datetime.utcnow(),
+                'now': datetime.datetime.utcnow().strftime('%d/%m/%Y'),
                 'total_count': len(rows),
                 'total_columns': len(headers),
             }
@@ -1314,7 +1525,7 @@ class ExportPDFView(View, ExportMixin):
             context = {
                 'headers': headers,
                 'rows': rows,
-                'now': datetime.datetime.utcnow(),
+                'now': datetime.datetime.utcnow().strftime('%d/%m/%Y'),
                 'total_count': len(rows),
                 'total_columns': len(headers),
             }
@@ -1400,7 +1611,7 @@ class ExportPDFView(View, ExportMixin):
                         val = getattr(v, col, '')
 
                     if isinstance(val, (datetime.date, datetime.datetime)):
-                        val = val.isoformat()
+                        val = val.strftime('%d/%m/%Y')
                     if val is None or val == '':
                         val = 'N/A'
                     row.append(val)
@@ -1410,7 +1621,7 @@ class ExportPDFView(View, ExportMixin):
             context = {
                 'headers': headers,
                 'rows': rows,
-                'now': datetime.datetime.utcnow(),
+                'now': datetime.datetime.utcnow().strftime('%d/%m/%Y'),
                 'total_count': len(rows),
                 'total_columns': len(headers),
             }
@@ -1579,7 +1790,7 @@ class ExportPDFView(View, ExportMixin):
                 estado=Ventas.ESTADO_COMPLETADA, fecha__gte=start_30, fecha__lte=_tz.now()).aggregate(total=Sum('precio_total')).get('total') or 0
 
             context = {
-                'now': datetime.datetime.utcnow(),
+                'now': datetime.datetime.utcnow().strftime('%d/%m/%Y'),
                 'monthly': monthly,
                 'categories': categories,
                 'top_products': top_products,
@@ -1626,7 +1837,7 @@ class ExportPDFView(View, ExportMixin):
             max_items = qs.annotate(items_cnt=Count('items')).aggregate(
                 max=Max('items_cnt'))['max'] or 0
             product_headers = [
-                f"Producto {i}" for i in range(1, max_items + 1)]
+                f"P{i}" for i in range(1, max_items + 1)]
 
             sales_rows = []
             for v in qs:
@@ -1660,7 +1871,7 @@ class ExportPDFView(View, ExportMixin):
                 'sales': sales_rows,
                 'product_headers': product_headers,
                 'total_columns': 6 + len(product_headers),
-                'now': datetime.datetime.utcnow(),
+                'now': datetime.datetime.utcnow().strftime('%d/%m/%Y'),
             }
             template_name = 'report_sales.html'
             entity_label = 'ventas'
@@ -1677,6 +1888,7 @@ class ExportPDFView(View, ExportMixin):
                 'enable-local-file-access': None,
                 'enable-javascript': None,
                 'javascript-delay': '4000',
+                'orientation': 'Portrait',
             }
             pdf = pdfkit.from_string(html, False, options=options)
             resp = HttpResponse(pdf, content_type='application/pdf')
@@ -1745,6 +1957,53 @@ class SalesMonthlyView(APIView):
                 target_year = today.year
         else:
             target_year = None
+
+        if request.path.startswith('/api3/'):
+            if year_param and year_param not in ['2022', '2023', '2024', '2026']:
+                return Response([])
+            elif year_param in ['2022', '2023', '2024']:
+                # Simulated data for work plan (diferenciado por año)
+                year = int(year_param)
+                factor = _plan_factor(year)
+                month_bumps = {
+                    2024: [1.0, 1.05, 1.1, 1.08, 1.12, 1.15, 1.18, 1.2, 1.1, 1.05, 1.0, 0.95],
+                    2023: [0.95, 1.0, 1.02, 1.04, 1.06, 1.08, 1.1, 1.12, 1.05, 1.0, 0.98, 0.96],
+                    2022: [0.9, 0.92, 0.95, 0.97, 1.0, 1.02, 1.05, 1.07, 1.0, 0.97, 0.95, 0.93],
+                }.get(year, [1] * 12)
+
+                base = [
+                    ('Ene', 15000.0, 45, 90, 180),
+                    ('Feb', 18000.0, 52, 104, 208),
+                    ('Mar', 22000.0, 60, 120, 240),
+                    ('Abr', 25000.0, 68, 136, 272),
+                    ('May', 28000.0, 75, 150, 300),
+                    ('Jun', 30000.0, 80, 160, 320),
+                    ('Jul', 32000.0, 85, 170, 340),
+                    ('Ago', 35000.0, 90, 180, 360),
+                    ('Sep', 33000.0, 88, 176, 352),
+                    ('Oct', 31000.0, 82, 164, 328),
+                    ('Nov', 29000.0, 78, 156, 312),
+                    ('Dic', 27000.0, 72, 144, 288),
+                ]
+
+                simulated_data = []
+                for idx, (label, sales_sum, sales_count, items_count, items_units) in enumerate(base):
+                    bump = month_bumps[idx]
+                    sum_adj = sales_sum * factor * bump
+                    cnt_adj = int(round(sales_count * factor * bump))
+                    items_cnt_adj = int(round(items_count * factor * bump))
+                    units_adj = int(round(items_units * factor * bump))
+                    simulated_data.append({
+                        'month': f"{year_param}-{idx + 1:02d}",
+                        'month_label': label,
+                        'sales_sum': round(sum_adj, 2),
+                        'sales_count': cnt_adj,
+                        'items_revenue': round(sum_adj, 2),
+                        'items_count': items_cnt_adj,
+                        'items_units': units_adj,
+                    })
+                return Response(simulated_data)
+            # For 2026, fall through to normal logic
 
         filter_lte = target_year is None or target_year == today.year
 

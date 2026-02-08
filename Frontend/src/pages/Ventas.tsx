@@ -15,6 +15,7 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
+import { getApiBase } from "@/lib/activeStore"
 
 // Datos de ejemplo de ventas. Cada venta puede contener varios items.
 const ventasData = [
@@ -109,6 +110,7 @@ const ventasData = [
 
 export default function VentasPage() {
   const { formatPrice } = useCurrency()
+  const API_BASE = getApiBase()
   const [expandedIds, setExpandedIds] = useState<string[]>([])
   const [ventas, setVentas] = useState<any[]>(ventasData)
   const [loading, setLoading] = useState(false)
@@ -132,7 +134,7 @@ export default function VentasPage() {
   // Cargar ventas desde la API al montar
   React.useEffect(() => {
     setLoading(true)
-    fetch('/api/Ventas/')
+    fetch(`${API_BASE}/Ventas/`)
       .then(async (res) => {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))

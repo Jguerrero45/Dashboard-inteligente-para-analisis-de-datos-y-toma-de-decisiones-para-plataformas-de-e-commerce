@@ -11,6 +11,7 @@ import { Search, Filter, Package, TrendingUp, TrendingDown, Download } from "luc
 import { useCurrency } from "@/hooks/use-currency"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardFooter } from "@/components/dashboard-footer"
+import { getApiBase } from "@/lib/activeStore"
 
 
 // Estado local: será llenado desde la API
@@ -18,6 +19,7 @@ const productosData: Array<any> = []
 
 export default function ProductosPage() {
   const { formatPrice } = useCurrency()
+  const API_BASE = getApiBase()
   const [searchTerm, setSearchTerm] = useState("")
   const [categoriaFilter, setCategoriaFilter] = useState("todas")
   const [estadoFilter, setEstadoFilter] = useState("todos")
@@ -30,7 +32,7 @@ export default function ProductosPage() {
     setLoading(true)
     setErrorLoad(null)
     try {
-      const res = await fetch('/api/Productos/')
+      const res = await fetch(`${API_BASE}/Productos/`)
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.detail || 'Error al cargar productos')

@@ -6,8 +6,10 @@ import { ChartContainer, Tooltip, renderTooltipWithoutRange } from "@/components
 import ChartInfo from "@/components/ui/chart-info"
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { getApiBase } from "@/lib/activeStore"
+import { fetchJson } from "@/lib/fetch-json"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
+import { getYearOptions } from "@/lib/plan-years"
 
 export function ProductsChart() {
   const [year, setYear] = useState<string>(format(new Date(), "yyyy"))
@@ -16,6 +18,8 @@ export function ProductsChart() {
   const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const isStoreC = getApiBase() === '/api3'
 
   const loadData = (y?: string) => {
     setLoading(true)
@@ -24,16 +28,18 @@ export function ProductsChart() {
     const params = new URLSearchParams({ limit: '6' })
     if (y) params.set('year', y)
     const API_BASE = getApiBase()
-    fetch(`${API_BASE}/metrics/top-categories-monthly/?` + params.toString())
-      .then((r) => r.json())
+    fetchJson<any>(`${API_BASE}/metrics/top-categories-monthly/?` + params.toString(), undefined, { months: [], series: [] })
       .then((json) => {
         if (!mounted) return
         if (json && Array.isArray(json.months) && Array.isArray(json.series)) {
           setMonths(json.months)
           setSeries(json.series)
+          const currentYear = y || year
+          setMessage(isStoreC && ['2022', '2023', '2024'].includes(currentYear) ? "Datos simulados para el plan de trabajo" : null)
         } else {
           setMonths([])
           setSeries([])
+          setMessage(null)
         }
       })
       .catch((err) => { setError(String(err)) })
@@ -44,7 +50,7 @@ export function ProductsChart() {
   useEffect(() => {
     loadData(year)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [year])
 
   const palette = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"]
 
@@ -93,15 +99,15 @@ export function ProductsChart() {
               borderColor: 'hsl(var(--color-border))',
             }}
           >
-            {Array.from({ length: 5 }).map((_, i) => {
-              const y = String(Number(format(new Date(), 'yyyy')) - i)
-              return <option key={y} value={y}>{y}</option>
-            })}
+            {getYearOptions(isStoreC).map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
           </select>
           <Button variant="outline" size="sm" onClick={() => loadData(year)} className="ml-2">Aplicar</Button>
           <Button variant="outline" size="sm" onClick={() => { const y = format(new Date(), 'yyyy'); setYear(y); loadData(y); }} className="ml-2">Restablecer</Button>
           {loading ? <span className="ml-2 text-sm">Cargando...</span> : null}
           {error ? <span className="ml-2 text-sm text-destructive">{error}</span> : null}
+          {message && <p className="ml-2 text-sm text-blue-600">{message}</p>}
         </div>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <PieChart onMouseMove={onMove} onMouseLeave={() => { }}>

@@ -7,6 +7,7 @@ import ChartInfo from "@/components/ui/chart-info"
 
 import { useEffect, useState, useCallback } from "react"
 import { getApiBase } from "@/lib/activeStore"
+import { fetchJson } from "@/lib/fetch-json"
 
 export function ProfitMarginChart() {
 
@@ -15,8 +16,7 @@ export function ProfitMarginChart() {
     useEffect(() => {
         let mounted = true
         const API_BASE = getApiBase()
-        fetch(`${API_BASE}/metrics/revenue-by-category/`)
-            .then((r) => r.json())
+        fetchJson<any[]>(`${API_BASE}/metrics/revenue-by-category/`, undefined, [])
             .then((json) => {
                 if (mounted && Array.isArray(json)) setData(json)
             })
