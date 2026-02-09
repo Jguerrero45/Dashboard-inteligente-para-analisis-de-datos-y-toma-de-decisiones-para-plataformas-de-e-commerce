@@ -82,7 +82,7 @@ export function ReturningCustomersCard() {
                                     defaultIndex={0}
                                     shared={false}
                                 />
-                                <RadialBar dataKey="value" background fill="hsl(var(--chart-2))" />
+                                <RadialBar dataKey="value" background fill="hsl(var(--chart-2))" name="% de clientes" />
                             </RadialBarChart>
                         </ChartContainer>
                     </ResponsiveContainer>

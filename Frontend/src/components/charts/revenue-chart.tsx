@@ -142,12 +142,11 @@ export function RevenueChart() {
             <Tooltip
               data={chartData}
               content={renderTooltipWithoutRange}
-              cursor={{ fill: 'var(--color-background)', opacity: 1, stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }}
               wrapperStyle={{ background: 'var(--color-background)', color: 'var(--color-foreground)', opacity: 1 }}
               defaultIndex={Math.max(0, chartData.length - 1)}
               shared={true}
             />
-            <Bar dataKey="revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} activeBar={{ stroke: 'hsl(var(--chart-2))', strokeWidth: 3 }} />
+            <Bar dataKey="revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Ingresos" activeBar={{ stroke: 'hsl(var(--chart-2))', strokeWidth: 3 }} />
             {compareYear && <Bar dataKey="revenue_prev" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} activeBar={{ stroke: 'hsl(var(--chart-3))', strokeWidth: 3 }} />}
           </BarChart>
         </ChartContainer>

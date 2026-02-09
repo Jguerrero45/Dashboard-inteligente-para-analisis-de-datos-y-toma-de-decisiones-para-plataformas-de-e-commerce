@@ -437,98 +437,75 @@ class RevenueByCategoryView(APIView):
     """Devuelve ingresos y costo por categoría en una ventana de días o por año."""
 
     def get(self, request):
-        from datetime import timedelta
+        try:
+            from datetime import timedelta
 
-        year_param = request.query_params.get('year')
-        anchor_now = timezone.now()
+            year_param = request.query_params.get('year')
+            anchor_now = timezone.now()
 
-        # Check if store_c and year specified
-        is_store_c = request.path.startswith('/api3/')
-        if is_store_c and year_param:
-            try:
-                year = int(year_param)
-                if year in [2024, 2023, 2022]:
-                    # Simulated data for work plan (diferenciado por año)
-                    factor = _plan_factor(year)
-                    category_bump = {
-                        2024: [1.15, 0.95, 1.05, 1.0, 0.9],
-                        2023: [0.9, 1.1, 0.95, 1.05, 1.0],
-                        2022: [0.85, 0.9, 1.1, 0.95, 1.05],
-                    }
-                    bumps = category_bump.get(year, [1, 1, 1, 1, 1])
-                    base = [
-                        ('Electrónicos', 15000.0, 12000.0),
-                        ('Ropa', 12000.0, 8000.0),
-                        ('Hogar', 10000.0, 7000.0),
-                        ('Deportes', 8000.0, 6000.0),
-                        ('Libros', 5000.0, 3500.0),
-                    ]
-                    simulated_data = []
-                    for idx, (cat, rev, cost) in enumerate(base):
-                        revenue = rev * factor * bumps[idx]
-                        cost_val = cost * factor * (0.98 + (idx * 0.01))
-                        margin_pct = ((revenue - cost_val) /
-                                      revenue * 100) if revenue > 0 else 0.0
-                        simulated_data.append({
-                            'category': cat,
-                            'revenue': round(revenue, 2),
-                            'cost': round(cost_val, 2),
-                            'margin_pct': round(margin_pct, 1),
-                        })
-                    return Response(simulated_data)
-                elif year == 2025:
-                    # 2025 must be empty
-                    return Response([])
-                elif year != 2026:
-                    return Response([])
-            except Exception:
-                pass
+            # Check if store_c and year specified
+            is_store_c = request.path.startswith('/api3/')
+            if is_store_c and year_param:
+                try:
+                    year = int(year_param)
+                    if year in [2024, 2023, 2022]:
+                        # For work plan years, return empty data with message handled in frontend
+                        return Response([])
+                    elif year == 2025:
+                        # 2025 must be empty
+                        return Response([])
+                    elif year != 2026:
+                        return Response([])
+                except Exception:
+                    pass
 
-        if year_param:
-            try:
-                year = int(year_param)
-                start = timezone.datetime(year=year, month=1, day=1)
-                end = timezone.datetime(year=year + 1, month=1, day=1)
-            except Exception:
-                start = anchor_now - timedelta(days=365)
+            if year_param:
+                try:
+                    year = int(year_param)
+                    start = timezone.datetime(year=year, month=1, day=1)
+                    end = timezone.datetime(year=year + 1, month=1, day=1)
+                except Exception:
+                    start = anchor_now - timedelta(days=365)
+                    end = anchor_now
+            else:
+                try:
+                    days = int(request.query_params.get('days', 30))
+                except Exception:
+                    days = 30
                 end = anchor_now
-        else:
-            try:
-                days = int(request.query_params.get('days', 30))
-            except Exception:
-                days = 30
-            end = anchor_now
-            start = end - timedelta(days=days)
+                start = end - timedelta(days=days)
 
-        qs = (
-            VentaItem.objects.select_related('venta', 'producto')
-            .filter(venta__estado=Ventas.ESTADO_COMPLETADA, venta__fecha__gte=start, venta__fecha__lt=end, venta__fecha__lte=timezone.now())
-        )
+            qs = (
+                VentaItem.objects.select_related('venta', 'producto')
+                .filter(venta__estado=Ventas.ESTADO_COMPLETADA, venta__fecha__gte=start, venta__fecha__lt=end, venta__fecha__lte=timezone.now())
+            )
 
-        cost_expr = ExpressionWrapper(
-            F('cantidad') * F('producto__costo'), output_field=DecimalField(max_digits=14, decimal_places=2)
-        )
+            cost_expr = ExpressionWrapper(
+                F('cantidad') * F('producto__costo'), output_field=DecimalField(max_digits=14, decimal_places=2)
+            )
 
-        agg = (
-            qs.values(cat=F('producto__categoria'))
-            .annotate(revenue=Sum('precio_total'), cost=Sum(cost_expr))
-            .order_by('-revenue')
-        )
+            agg = (
+                qs.values(cat=F('producto__categoria'))
+                .annotate(revenue=Sum('precio_total'), cost=Sum(cost_expr))
+                .order_by('-revenue')
+            )
 
-        data = []
-        for row in agg:
-            revenue = float(row.get('revenue') or 0)
-            cost = float(row.get('cost') or 0)
-            margin_pct = ((revenue - cost) / revenue *
-                          100) if revenue > 0 else 0.0
-            data.append({
-                'category': row.get('cat') or 'Sin categoría',
-                'revenue': revenue,
-                'cost': cost,
-                'margin_pct': round(margin_pct, 1),
-            })
+            data = []
+            for row in agg:
+                revenue = float(row.get('revenue') or 0)
+                cost = float(row.get('cost') or 0)
+                margin_pct = ((revenue - cost) / revenue *
+                              100) if revenue > 0 else 0.0
+                data.append({
+                    'category': row.get('cat') or 'Sin categoría',
+                    'revenue': revenue,
+                    'cost': cost,
+                    'margin_pct': round(margin_pct, 1),
+                })
 
-        return Response(data)
+            return Response(data)
+        except Exception:
+            return Response([])
 
 
 class ExportCostTemplateView(View):

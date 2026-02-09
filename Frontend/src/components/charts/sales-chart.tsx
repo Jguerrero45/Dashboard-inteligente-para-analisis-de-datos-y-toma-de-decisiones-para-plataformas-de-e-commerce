@@ -170,6 +170,7 @@ export function SalesChart() {
               strokeWidth={2}
               dot={{ r: 4, stroke: 'hsl(var(--color-card-foreground))', strokeWidth: 0 }}
               activeDot={{ r: 6 }}
+              name="Ventas"
             />
             {compareYear && (
               <Area
@@ -180,6 +181,7 @@ export function SalesChart() {
                 strokeWidth={2}
                 dot={{ r: 4, stroke: 'hsl(var(--color-card-foreground))', strokeWidth: 0 }}
                 activeDot={{ r: 6 }}
+                name="Ventas a comparar"
               />
             )}
           </AreaChart>

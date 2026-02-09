@@ -133,8 +133,8 @@ export function OrdersChart() {
                         <XAxis dataKey="month" className="text-xs" />
                         <YAxis className="text-xs" />
                         <Tooltip data={displayData} content={renderTooltipWithoutRange} cursor={{ stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }} defaultIndex={Math.max(0, displayData.length - 1)} shared={true} />
-                        <Line type="monotone" dataKey="orders" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6, stroke: 'hsl(var(--chart-3))', strokeWidth: 2, fill: 'white' }} name="Valor de Pedidos" />
-                        {compareYear && <Line type="monotone" dataKey="orders_prev" stroke="hsl(var(--chart-4))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6, stroke: 'hsl(var(--chart-4))', strokeWidth: 2, fill: 'white' }} name="Valor Pedidos Año Anterior" />}
+                        <Line type="monotone" dataKey="orders" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6, stroke: 'hsl(var(--chart-3))', strokeWidth: 2, fill: 'white' }} name="Cantidad de pedidos" />
+                        {compareYear && <Line type="monotone" dataKey="orders_prev" stroke="hsl(var(--chart-4))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6, stroke: 'hsl(var(--chart-4))', strokeWidth: 2, fill: 'white' }} name="Cantidad de pedidos a comparar" />}
                     </LineChart>
                 </ChartContainer>
             </CardContent>
