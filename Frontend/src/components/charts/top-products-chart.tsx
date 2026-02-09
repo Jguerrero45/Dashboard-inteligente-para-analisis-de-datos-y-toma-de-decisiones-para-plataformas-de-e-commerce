@@ -136,7 +136,7 @@ export function TopProductsChart() {
                 data={chartData}
                 content={renderTooltipWithoutRange}
                 formatter={(value: number) => sortBy === 'revenue' ? formatPrice(value) : value}
-                wrapperStyle={{ background: 'var(--color-background)', color: 'var(--color-foreground)', opacity: 1 }}
+                wrapperStyle={{ background: 'var(--color-background)', color: '#000000', opacity: 1 }}
                 defaultIndex={0}
                 shared={false}
               />

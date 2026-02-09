@@ -158,7 +158,7 @@ export function SalesChart() {
               data={displayData}
               content={renderTooltipWithoutRange}
               cursor={{ fill: 'var(--color-background)', opacity: 1, stroke: 'rgba(0,0,0,0.08)', strokeWidth: 2 }}
-              wrapperStyle={{ background: 'var(--color-background)', color: 'var(--color-foreground)', opacity: 1 }}
+              wrapperStyle={{ background: 'var(--color-background)', color: '#000000', opacity: 1 }}
               defaultIndex={Math.max(0, displayData.length - 1)}
               shared={true}
             />

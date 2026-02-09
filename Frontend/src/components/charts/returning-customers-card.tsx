@@ -78,7 +78,7 @@ export function ReturningCustomersCard() {
                                     data={chartData}
                                     content={renderTooltipWithoutRange}
                                     cursor={{ fill: 'var(--color-background)', opacity: 1 }}
-                                    wrapperStyle={{ background: 'var(--color-background)', color: 'var(--color-foreground)', opacity: 1 }}
+                                    wrapperStyle={{ background: 'var(--color-background)', color: '#000000', opacity: 1 }}
                                     defaultIndex={0}
                                     shared={false}
                                 />

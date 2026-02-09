@@ -142,7 +142,7 @@ export function RevenueChart() {
             <Tooltip
               data={chartData}
               content={renderTooltipWithoutRange}
-              wrapperStyle={{ background: 'var(--color-background)', color: 'var(--color-foreground)', opacity: 1 }}
+              wrapperStyle={{ background: 'var(--color-background)', color: '#000000', opacity: 1 }}
               defaultIndex={Math.max(0, chartData.length - 1)}
               shared={true}
             />
