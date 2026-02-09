@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 import { Select, SelectTrigger, SelectContent, SelectItem } from "@/components/ui/select"
+import { applyRootFontSize } from "@/lib/font-size"
 
-const SIZE_MAP: Record<string, number> = { sm: 14, md: 16, lg: 18 }
 const SIZE_LABEL: Record<string, string> = { sm: "Pequeño", md: "Medio", lg: "Grande" }
 const THEME_LABEL: Record<string, string> = { light: "Claro", dark: "Oscuro", system: "Sistema" }
 
@@ -16,34 +16,54 @@ export default function AppearanceSettings() {
 
     useLayoutEffect(() => {
         if (typeof window !== "undefined") {
-            const saved = localStorage.getItem("app:fontSize") ?? "md"
-            const px = SIZE_MAP[saved] ?? 16
-            document.documentElement.style.setProperty("--root-font-size", `${px}px`)
-            document.documentElement.style.fontSize = `${px}px`
-            setFontSize(saved)
+            applyRootFontSize(fontSize || "md")
         }
     }, [])
 
     useLayoutEffect(() => {
         if (fontSize) {
-            const px = SIZE_MAP[fontSize] ?? 16
-            if (typeof document !== "undefined") {
-                document.documentElement.style.setProperty("--root-font-size", `${px}px`)
-                document.documentElement.style.fontSize = `${px}px`
-            }
+            applyRootFontSize(fontSize)
         }
     }, [fontSize])
 
     useEffect(() => {
-        if (typeof window !== "undefined" && fontSize) {
-            localStorage.setItem("app:fontSize", fontSize)
-        }
-    }, [fontSize])
+        let mounted = true
+        const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+        if (!token) return
+        fetch('/api/profile/', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+            .then((res) => res.ok ? res.json() : null)
+            .then((data) => {
+                if (!mounted || !data) return
+                const size = data.font_size || "md"
+                setFontSize(size)
+                applyRootFontSize(size)
+            })
+            .catch(() => { })
+        return () => { mounted = false }
+    }, [])
 
     const restoreDefaults = () => {
         setFontSize("md")
         setTheme("system")
-        if (typeof window !== "undefined") localStorage.removeItem("app:fontSize")
+        applyRootFontSize("md")
+    }
+
+    const saveSettings = async () => {
+        const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+        if (!token) return
+        try {
+            await fetch('/api/profile/', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ font_size: fontSize }),
+            })
+            window.alert("Cambios guardados exitosamente")
+        } catch (_e) {
+            window.alert("No se pudo guardar el tamaño de fuente")
+        }
     }
 
     return (
@@ -80,9 +100,7 @@ export default function AppearanceSettings() {
                 </div>
 
                 <div className="mt-4 flex gap-2">
-                    <Button variant="secondary" onClick={() => {
-                        window.alert("Cambios guardados exitosamente")
-                    }}>
+                    <Button variant="secondary" onClick={saveSettings}>
                         Guardar
                     </Button>
                     <Button variant="ghost" onClick={restoreDefaults}>

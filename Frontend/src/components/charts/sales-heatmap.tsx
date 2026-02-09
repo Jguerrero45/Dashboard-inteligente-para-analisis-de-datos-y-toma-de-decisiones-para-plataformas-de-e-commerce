@@ -36,6 +36,7 @@ export function SalesHeatmap() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [hoverKey, setHoverKey] = useState<string | null>(null)
   const isStoreC = getApiBase() === '/api3'
 
   const loadHeatmap = (m?: string) => {
@@ -136,14 +137,26 @@ export function SalesHeatmap() {
               <div className="w-12 text-xs text-muted-foreground flex items-center">{`S${weekIndex + 1}`}</div>
               {row.map((value, colIndex) => {
                 const dayNum = (dayNumbers && dayNumbers[weekIndex] && dayNumbers[weekIndex][colIndex]) || 0
+                const tooltipText = dayNum
+                  ? `${dayNum} ${daysOfWeek[colIndex]} - ${value}% actividad${revenueRaw && revenueRaw[weekIndex] ? ` (${formatPrice(revenueRaw[weekIndex][colIndex] || 0)})` : ''}`
+                  : `Sin día`
+                const key = `${weekIndex}-${colIndex}`
                 return (
                   <div
                     key={colIndex}
                     className={`flex-1 h-10 rounded relative transition-all hover:scale-105 cursor-pointer`}
-                    title={dayNum ? `${dayNum} ${daysOfWeek[colIndex]} - ${value}% actividad${revenueRaw && revenueRaw[weekIndex] ? ` (${formatPrice(revenueRaw[weekIndex][colIndex] || 0)})` : ''}` : `Sin día`}
+                    onMouseEnter={() => setHoverKey(key)}
+                    onMouseLeave={() => setHoverKey(null)}
                     style={{ backgroundColor: getColorIntensity(value) }}
                   >
-                    {dayNum ? <span className="absolute left-1 top-1 text-[10px] text-muted-foreground">{dayNum}</span> : null}
+                    {dayNum ? <span className="absolute left-1 top-1 text-[15px] text-muted-foreground">{dayNum}</span> : null}
+                    {hoverKey === key ? (
+                      <div
+                        className="absolute z-20 -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-white px-2 py-1 text-sm text-black shadow-md"
+                      >
+                        {tooltipText}
+                      </div>
+                    ) : null}
                   </div>
                 )
               })}

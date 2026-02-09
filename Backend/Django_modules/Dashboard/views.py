@@ -2227,6 +2227,7 @@ class ProfileView(APIView):
             'phone': profile.phone,
             'company': profile.company,
             'address': profile.address,
+            'font_size': profile.font_size or 'md',
             'avatar_url': avatar_url,
             'selected_store': selected_store,
             'stores': stores_list,
@@ -2243,6 +2244,9 @@ class ProfileView(APIView):
         profile.phone = data.get('phone', profile.phone)
         profile.company = data.get('company', profile.company)
         profile.address = data.get('address', profile.address)
+        font_size = data.get('font_size')
+        if font_size in ['sm', 'md', 'lg']:
+            profile.font_size = font_size
         # permitir actualizar la tienda seleccionada mediante "selected_store"
         selected_store_id = data.get(
             'selected_store') or data.get('selected_store_id')

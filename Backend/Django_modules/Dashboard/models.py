@@ -366,6 +366,7 @@ class UserProfile(models.Model):
     phone = models.CharField(max_length=50, blank=True)
     company = models.CharField(max_length=120, blank=True)
     address = models.CharField(max_length=255, blank=True)
+    font_size = models.CharField(max_length=8, default='md', blank=True)
     avatar_path = models.CharField(
         max_length=255, blank=True, help_text='Ruta relativa en MEDIA_ROOT')
 

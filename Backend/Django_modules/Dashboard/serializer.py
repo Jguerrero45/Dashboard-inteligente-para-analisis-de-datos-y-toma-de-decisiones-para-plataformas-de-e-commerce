@@ -216,7 +216,7 @@ class UserProfile_Serializers(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('phone', 'company', 'address',
+        fields = ('phone', 'company', 'address', 'font_size',
                   'avatar_path', 'selected_store')
 
 

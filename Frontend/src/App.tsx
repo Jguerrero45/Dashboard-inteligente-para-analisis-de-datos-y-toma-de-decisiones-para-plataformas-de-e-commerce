@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { useEffect } from "react"
 import { ThemeProvider } from "./components/theme-provider"
 import { Toaster } from "./components/ui/toaster"
 import ExchangeRateProvider from "./components/exchange-rate-provider"
@@ -15,8 +16,25 @@ import Login from "./pages/Login"
 import Register from "./pages/Register"
 import Forgot from "./pages/Forgot"
 import Costos from "./pages/Costos"
+import { applyRootFontSize } from "./lib/font-size"
 
 function App() {
+  useEffect(() => {
+    const isAuth = typeof window !== "undefined" && localStorage.getItem("isAuthenticated") === "true"
+    if (!isAuth) {
+      applyRootFontSize("md")
+      return
+    }
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+    if (!token) return
+    fetch('/api/profile/', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        const size = data?.font_size || "md"
+        applyRootFontSize(size)
+      })
+      .catch(() => { })
+  }, [])
   const AuthRedirect: React.FC = () => {
     // Mostrar Welcome si no hay sesión, si hay sesión redirigir a dashboard
     const isAuth = typeof window !== "undefined" && localStorage.getItem("isAuthenticated") === "true"
